@@ -297,7 +297,7 @@ export function scoreIndustryDiscovery(
   if ((item.summary || "").trim().length >= 120) score += 4;
   if (corroboratingSourceCount > 1) {
     score += Math.min(12, (corroboratingSourceCount - 1) * 5);
-    reasons.push(`Corroborated by ${corroboratingSourceCount} sources`);
+    reasons.push(`Covered by ${corroboratingSourceCount} sources`);
   }
 
   return { score: Math.max(0, Math.min(100, Math.round(score))), reasons };

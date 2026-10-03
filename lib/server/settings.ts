@@ -32,6 +32,7 @@ import {
 import { isValidPublicProfileUrl } from "@/lib/public-metrics";
 import { AI_KEY_PROVIDERS, DEFAULT_LOCAL_AI_URLS, aiEnvironmentKey, cleanAiModelOverride, isAiKeyProvider, isLocalAiProvider, isValidAiModelId, localAiBaseUrl } from "@/lib/ai-providers";
 import { defaultBriefSections, normalizeBriefSections } from "@/lib/daily-brief-snapshot";
+import { cleanIndustryTopics, industryDiscoveryOptions, MAX_INDUSTRY_TOPICS } from "@/lib/industry-discovery";
 
 type StoredAudienceAccount = Omit<
   AudienceAccountInput,
@@ -71,6 +72,8 @@ const defaults: StoredSettings = {
     description: "",
     excludedTerms: [],
     dailyLimit: 30,
+    country: "AU",
+    lookbackDays: 1,
   },
   mentions: {
     terms: [],
@@ -414,6 +417,9 @@ export async function updateSettings(update: SettingsUpdate) {
       MAX_MENTION_CONTEXT_VALUES,
     );
     const googleClientId = update.newsletters.googleClientId.trim();
+    const industryKeywords = cleanIndustryTopics(update.industry.keywords);
+    if (industryKeywords.length > MAX_INDUSTRY_TOPICS)
+      throw new Error(`Use at most ${MAX_INDUSTRY_TOPICS} topic phrases so every configured phrase can be searched.`);
     if (googleClientId && !isGoogleOAuthClientId(googleClientId))
       throw new Error(GOOGLE_OAUTH_CLIENT_ID_ERROR);
     const next: StoredSettings = {
@@ -423,7 +429,8 @@ export async function updateSettings(update: SettingsUpdate) {
       },
       industry: {
         sources: cleanIndustrySources(update.industry.sources),
-        keywords: cleanList(update.industry.keywords),
+        keywords: industryKeywords,
+        ...industryDiscoveryOptions({ ...current.industry, ...update.industry }),
         description: (update.industry.description ?? "").trim().slice(0, 1_000),
         excludedTerms: cleanList(update.industry.excludedTerms ?? []),
         dailyLimit: Math.min(

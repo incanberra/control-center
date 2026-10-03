@@ -6,10 +6,10 @@ Every fresh install starts empty. There are no built-in names, companies, websit
 
 ## Install and open
 
-Requirements: [Node.js 24.19 or newer](https://nodejs.org/en/download), npm, and a modern desktop browser.
+Requirements: [Node.js 24.13 or newer](https://nodejs.org/en/download), npm, and a modern desktop browser.
 
 ```bash
-git clone https://github.com/mreflow/control-center.git
+git clone https://github.com/incanberra/control-center.git
 cd control-center
 npm run launch
 ```
@@ -56,7 +56,13 @@ Each configured URL is treated independently and can belong to any niche.
 
 A blocked homepage does not stop feed or sitemap discovery. Raw discoveries are stored separately from the reading queue. Canonical URL/title deduplication, watched-source priority, recency, configured topics and exclusions, material-change signals, event similarity, and source diversity select at most the configured daily target (30 by default). This keeps hundreds of broad discoveries available to the collector without presenting hundreds of cards as equally important.
 
-Active Industry cards are limited to items published or newly discovered in the last 24 hours; older surfaced items remain under **History**. **Archived** contains only items a user explicitly archived. Undated feed entries establish a baseline instead of being presented as fresh news. Topic phrases add broader Google News discovery, while watched-site updates remain prioritized independently. A selected AI provider can rerank the bounded candidate set; failures automatically fall back to the local importance model.
+The **Monitor** tab provides **Latest**, **Unreviewed**, **Saved**, **History** and **Archived** views. Latest uses the discovery window selected in Settings (1, 3 or 7 days; 1 by default). Unreviewed retains surfaced items until explicitly reviewed or archived, including older history from before this upgrade. Opening a source does not mark it reviewed. Save is independent of review and archive status; saved evidence stays available regardless of age. Both choices survive refreshes, app restarts and backups. **Mark these N reviewed** changes only the currently displayed, filtered batch; **Mark unread** reverses an individual review.
+
+Settings offers Australian, US and UK English-language Google News editions, up to 24 topic phrases, and reading targets from 10 to 50 items per collection. New and legacy settings without an edition use Australia. Older configurations exceeding 24 phrases display a coverage warning until shortened. Longer windows recover available source material, not guaranteed complete coverage. Undated feed entries establish a baseline instead of being presented as fresh news. Watched-site updates remain prioritized independently. A selected AI provider can rerank the bounded candidate set; failures automatically fall back to the local importance model. Multiple sources are described as coverage, not independent corroboration.
+
+Monitor reads saved collection results every minute. This does not trigger web or AI collection; the existing server scheduler and **Refresh sources** control collection. Other legacy tabs retain their existing refresh behaviour. Source failures are visible and the last collection time is shown in Australia/Sydney time. The app must be running to collect.
+
+This fork's first research-workspace change is persistent monitoring. The reusable-work catalogue, topic workspaces and existing geoeconomics-brief import are subsequent changes; see [docs/RESEARCH_WORKSPACE.md](docs/RESEARCH_WORKSPACE.md).
 
 ## Mentions
 

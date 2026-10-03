@@ -1,0 +1,15 @@
+.monitor { min-width: 0; }
+.status, .queueNote { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; }
+.status { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+.status button { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; color: inherit; cursor: pointer; }
+.toolbar { flex-wrap: wrap; gap: 12px; }
+.queueNote { margin: 12px 0 18px; }
+.queueNote p { font-size: 13px; line-height: 1.6; max-width: 720px; color: var(--muted); }
+.health { margin: 12px 0 20px; }
+.health summary { cursor: pointer; font-size: 13px; padding: 10px 0; }
+.footer { justify-content: flex-start !important; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px !important; }
+.actions button, .actions a { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto !important; height: auto !important; min-height: 34px; padding: 7px 10px !important; border-radius: 7px !important; font-size: 12px; }
+.actions button[aria-pressed="true"] { background: var(--teal-soft); color: var(--teal); }
+.actions button:disabled { opacity: .5; cursor: wait; }
+@media (max-width: 720px) { .status { align-items: flex-start; flex-direction: column; } .actions { gap: 6px !important; } }

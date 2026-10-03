@@ -54,6 +54,8 @@ export type PublicSettings = {
     description: string;
     excludedTerms: string[];
     dailyLimit: number;
+    country?: "AU" | "US" | "GB";
+    lookbackDays?: 1 | 3 | 7;
   };
   mentions: {
     terms: string[];
@@ -116,6 +118,8 @@ export type ContentWorkflow = {
   restoreEligible: boolean;
 };
 
+export type StoryReview = { reviewedAt: string | null; savedAt: string | null };
+
 export type LiveStory = {
   id: string;
   title: string;
@@ -135,6 +139,7 @@ export type LiveStory = {
   curationMode?: "local" | AiKeyProvider;
   collectionScope?: string;
   workflow?: ContentWorkflow;
+  review?: StoryReview;
 };
 
 export type IndustrySourceStatus = {

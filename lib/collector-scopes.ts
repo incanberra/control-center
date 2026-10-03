@@ -13,6 +13,8 @@ export function industryCacheScope(settings: FeedSettings) {
     ...settings.industry.keywords.map((keyword) => `topic:${keyword}`),
     ...settings.industry.excludedTerms.map((term) => `exclude:${term}`),
     `limit:${settings.industry.dailyLimit}`,
+    `country:${settings.industry.country ?? "AU"}`,
+    `window:${settings.industry.lookbackDays ?? 1}`,
     `ai:${settings.ai.provider}:${settings.ai.model}`,
     ...(isLocalAiProvider(settings.ai.provider) ? [settings.ai.localBaseUrls?.[settings.ai.provider] || ""] : []),
   ]);

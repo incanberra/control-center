@@ -78,7 +78,7 @@ import { AudienceInsights } from "@/components/audience-insights";
 import type { AudienceHistorySeries } from "@/lib/audience-charts";
 import { AI_PROVIDER_LABELS, DEFAULT_LOCAL_AI_URLS, isAiReady } from "@/lib/ai-providers";
 import { sortFeedStories, selectNewsletterTopics, newsletterSourceOptions } from "@/lib/feed-priority";
-import { sortIndustryItems, type IndustrySortOrder } from "@/lib/industry";
+import { MonitorView } from "@/components/monitor-view";
 import { completeTaskItems } from "@/lib/tasks";
 import {
   applyArchiveToPayload,
@@ -114,6 +114,8 @@ const emptySettings: PublicSettings = {
     description: "",
     excludedTerms: [],
     dailyLimit: 30,
+    country: "AU",
+    lookbackDays: 1,
   },
   mentions: {
     terms: [],
@@ -143,7 +145,7 @@ const emptySettings: PublicSettings = {
 
 const nav: { id: Tab; label: string; icon: typeof Activity }[] = [
   { id: "today", label: "Today", icon: LayoutDashboard },
-  { id: "industry", label: "Industry", icon: Radio },
+  { id: "industry", label: "Monitor", icon: Radio },
   { id: "mentions", label: "Mentions", icon: AtSign },
   { id: "reminders", label: "Reminders", icon: Bookmark },
   { id: "audience", label: "Audience", icon: Users },
@@ -853,277 +855,6 @@ function TodayView({
           </div>
         </Panel>
       </div>
-    </div>
-  );
-}
-
-function IndustryView({
-  saveStory,
-  openSettings,
-}: {
-  saveStory: (story: LiveStory) => void;
-  openSettings: () => void;
-}) {
-  const { data, loading, error, refresh, mutate } = useLiveData<LiveFeedResponse>(
-    "/api/live/industry",
-    15 * 60 * 1000,
-    "/api/live/industry?refresh=1",
-  );
-  const [query, setQuery] = useState("");
-  const [view, setView] = useState<"active" | "history" | "archive">("active");
-  const [sortOrder, setSortOrder] = useState<IndustrySortOrder>("important");
-  const archive = useArchiveAction<LiveFeedResponse>("industry", mutate);
-  const sourceItems =
-    view === "archive"
-      ? data?.archivedItems || []
-      : view === "history"
-        ? data?.historyItems || []
-        : data?.items || [];
-  const items = sortIndustryItems(
-    sourceItems.filter((item) =>
-      `${item.title} ${item.summary} ${item.source}`
-        .toLowerCase()
-        .includes(query.toLowerCase()),
-    ),
-    sortOrder,
-  );
-  const kindLabel = (item: LiveStory) =>
-    item.kind === "sitemap"
-      ? "New sitemap page"
-      : item.kind === "topic"
-        ? "Topic discovery"
-        : "Live feed";
-  return (
-    <div className="view">
-      <PageHeading
-        eyebrow="Live source desk"
-        title="Industry"
-        description="A bounded briefing of the most useful watched-site and topic updates from the last 24 hours."
-        action={
-          <button
-            className="button button-primary"
-            onClick={refresh}
-            disabled={loading}
-          >
-            <RefreshCw size={15} /> Refresh sources
-          </button>
-        }
-      />
-      {loading && !data ? (
-        <LoadingPanel />
-      ) : !data && error ? (
-        <LiveLoadError error={error} retry={refresh} />
-      ) : !data?.configured ? (
-        <SetupEmpty
-          icon={<Globe2 />}
-          title="Choose what this page watches"
-          description="Add public sites for feed or sitemap tracking, and topics for wider industry-news discovery."
-          onSetup={openSettings}
-        />
-      ) : (
-        <>
-          <div className="toolbar reveal delay-1">
-            <div className="filter-row">
-              <button
-                className={view === "active" ? "active" : ""}
-                onClick={() => setView("active")}
-              >
-                Important now {data.items.length}
-              </button>
-              <button
-                className={view === "history" ? "active" : ""}
-                onClick={() => setView("history")}
-              >
-                History {data.historyCount || 0}
-              </button>
-              <button
-                className={view === "archive" ? "active" : ""}
-                onClick={() => setView("archive")}
-              >
-                Archived {data.archiveCount || 0}
-              </button>
-            </div>
-            <div className="toolbar-actions">
-              <label className="sort-control">
-                <span>Sort</span>
-                <select
-                  aria-label="Sort industry updates"
-                  value={sortOrder}
-                  onChange={(event) =>
-                    setSortOrder(event.target.value as IndustrySortOrder)
-                  }
-                >
-                  <option value="important">Most important</option>
-                  <option value="newest">Newest first</option>
-                  <option value="oldest">Oldest first</option>
-                  <option value="watched">Watched sites first</option>
-                </select>
-              </label>
-              <label className="search-box">
-                <Search size={15} />
-                <input
-                  aria-label="Search industry updates"
-                  placeholder="Search updates"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                />
-              </label>
-            </div>
-          </div>
-          <div className="industry-curation-strip reveal delay-1">
-            <div>
-              <Sparkles size={17} />
-              <span>
-                <b>{data.items.length} surfaced</b>
-                <small>
-                  from {data.discoveredCount ?? data.items.length} current
-                  discoveries · limit {data.surfacedLimit ?? data.items.length}
-                </small>
-              </span>
-            </div>
-            <Label tone={data.curationMode === "local" ? "watch" : "verified"}>
-              {data.curationMode === "local"
-                ? "Local ranking"
-                : `${data.curationMode} assisted`}
-            </Label>
-            <p>
-              {data.providerStatuses?.[0]?.message ||
-                "Canonical deduplication, relevance, recency, material-change signals, and source diversity determine this queue."}
-            </p>
-          </div>
-          {data.sourceStatuses?.length ? (
-            <div className="source-status-grid reveal delay-1">
-              {data.sourceStatuses.map((status) => (
-                <div
-                  className={`source-status status-${status.state}`}
-                  key={status.sourceId}
-                >
-                  <span>
-                    <Globe2 size={14} />
-                    <b>{status.source}</b>
-                  </span>
-                  <Label
-                    tone={status.mode === "sitemap" ? "brief" : "positive"}
-                  >
-                    {status.mode}
-                  </Label>
-                  <p>{status.message}</p>
-                  <a href={status.endpoint} target="_blank" rel="noreferrer">
-                    View endpoint <ExternalLink size={11} />
-                  </a>
-                </div>
-              ))}
-            </div>
-          ) : null}
-          <ErrorNotice
-            errors={[
-              ...(data.errors || []),
-              ...(error ? [error] : []),
-              ...(archive.error ? [archive.error] : []),
-            ]}
-          />
-          <div className="story-stack reveal delay-2">
-            {items.map((item, index) => (
-              <article className="story-card" key={item.id}>
-                <div className="story-index">
-                  {String(index + 1).padStart(2, "0")}
-                </div>
-                <div className="story-body">
-                  <div className="story-meta">
-                    <span>{item.source}</span>
-                    <i />
-                    <span>{formatDate(item.publishedAt)}</span>
-                    <Label
-                      tone={item.kind === "sitemap" ? "brief" : "positive"}
-                    >
-                      {kindLabel(item)}
-                    </Label>
-                    {item.importanceScore !== undefined && (
-                      <Label tone="verified">
-                        {item.importanceScore} importance
-                      </Label>
-                    )}
-                    {view === "history" && (
-                      <Label tone="watch">History</Label>
-                    )}
-                    {view === "archive" && (
-                      <Label tone="watch">Archived</Label>
-                    )}
-                  </div>
-                  <h2>{item.title}</h2>
-                  <p>
-                    {item.summary ||
-                      "Open the original source for the full update."}
-                  </p>
-                  {item.importanceReason && view === "active" && (
-                    <p className="importance-reason">
-                      <Sparkles size={12} /> {item.importanceReason}
-                    </p>
-                  )}
-                  <div className="story-footer">
-                    <span />
-                    <div>
-                      {view === "active" && (
-                        <button
-                          title="Save to reminders"
-                          onClick={() => saveStory(item)}
-                        >
-                          <Bookmark size={16} />
-                        </button>
-                      )}
-                      {view === "active" ? (
-                        <button
-                          title="Archive"
-                          disabled={archive.pending === item.id}
-                          onClick={() => void archive.update(item.id, true)}
-                        >
-                          <Archive size={16} />
-                        </button>
-                      ) : item.workflow?.restoreEligible ? (
-                        <button
-                          title="Restore from archive"
-                          disabled={archive.pending === item.id}
-                          onClick={() => void archive.update(item.id, false)}
-                        >
-                          <ArchiveRestore size={16} />
-                        </button>
-                      ) : null}
-                      <a
-                        className="round-link"
-                        href={item.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        title="Open original"
-                      >
-                        <ExternalLink size={16} />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </article>
-            ))}
-            {!items.length && (
-              <Panel className="empty-state">
-                <CheckCircle2 size={24} />
-                <h2>
-                  {view === "archive"
-                    ? "Nothing archived yet"
-                    : view === "history"
-                      ? "Nothing in history yet"
-                      : "No current updates found"}
-                </h2>
-                <p>
-                  {view === "archive"
-                    ? "Items only appear here after you choose Archive."
-                    : view === "history"
-                      ? "Updates that left the current 24-hour window remain available here."
-                      : "No discovery cleared the current importance threshold. The broad source scan still completed and will check again automatically."}
-                </p>
-              </Panel>
-            )}
-          </div>
-        </>
-      )}
     </div>
   );
 }
@@ -2529,8 +2260,8 @@ function SettingsView({
               <div className="settings-title">
                 <Globe2 />
                 <div>
-                  <p className="eyebrow">Industry</p>
-                  <h2>Sites and industry topics</h2>
+                  <p className="eyebrow">Monitor</p>
+                  <h2>Sources and topic searches</h2>
                   <p>
                     Add any public homepage or feed. RSS, Atom, and RDF are
                     tried first; when none is available, the collector records a
@@ -2562,8 +2293,22 @@ function SettingsView({
                 />
               </div>
               <div className="settings-field">
+                <label htmlFor="monitor-country">Topic search edition<small>English-language discovery with an Australian, US or UK news edition. Watched feeds keep their original coverage.</small></label>
+                <select id="monitor-country" value={draft.industry.country ?? "AU"}
+                  onChange={(event) => setDraft((value) => ({ ...value, industry: { ...value.industry, country: event.target.value as "AU" | "US" | "GB" } }))}>
+                  <option value="AU">Australia · English</option><option value="US">United States · English</option><option value="GB">United Kingdom · English</option>
+                </select>
+              </div>
+              <div className="settings-field">
+                <label htmlFor="monitor-window">Discovery window<small>Use a longer window to catch up after missed days. Recovery depends on what sources still provide. Unreviewed and Saved have no age limit.</small></label>
+                <select id="monitor-window" value={draft.industry.lookbackDays ?? 1}
+                  onChange={(event) => setDraft((value) => ({ ...value, industry: { ...value.industry, lookbackDays: Number(event.target.value) as 1 | 3 | 7 } }))}>
+                  <option value={1}>Last 24 hours</option><option value={3}>Last 3 days</option><option value={7}>Last 7 days</option>
+                </select>
+              </div>
+              <div className="settings-field">
                 <label>
-                  Daily reading target
+                  Reading target per collection
                   <small>
                     Discovery remains broad, but only this many high-value
                     updates can appear in the current queue.
@@ -2581,6 +2326,8 @@ function SettingsView({
                     }))
                   }
                 >
+                  <option value={10}>10 updates</option>
+                  <option value={15}>15 updates</option>
                   <option value={20}>20 updates</option>
                   <option value={25}>25 updates</option>
                   <option value={30}>30 updates</option>
@@ -2657,7 +2404,7 @@ function SettingsView({
               </div>
               <TagEditor
                 label="Industry topics"
-                help="These phrases discover wider current news and act as must-track relevance signals. Watched sites still receive priority, but low-value pages stay in discovery history instead of flooding the reading queue."
+                help={`Use up to 24 phrases; ${draft.industry.keywords.length} configured. Every phrase within that limit is searched. Watched sites also contribute independently.`}
                 values={draft.industry.keywords}
                 onChange={(keywords) =>
                   setDraft((value) => ({
@@ -3719,7 +3466,7 @@ export function ControlCenter() {
           />
         )}{" "}
         {activeTab === "industry" && (
-          <IndustryView
+          <MonitorView
             saveStory={(story) =>
               addReminder(story.title, story.summary, story.url)
             }

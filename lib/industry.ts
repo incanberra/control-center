@@ -49,10 +49,11 @@ export function freshIndustryDiscoveries(
   siteItems: LiveStory[],
   topicItems: LiveStory[],
   now = Date.now(),
+  hours = INDUSTRY_FRESHNESS_HOURS,
 ) {
   return filterFreshStories(
     combineIndustryDiscoveries(siteItems, topicItems),
-    INDUSTRY_FRESHNESS_HOURS,
+    hours,
     now,
   );
 }
