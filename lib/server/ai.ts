@@ -9,11 +9,14 @@ import { AI_PROVIDER_LABELS, DEFAULT_AI_MODELS, aiSupportsWebSearch, cleanAiMode
 import { aiProviderJson } from "@/lib/ai-provider-http";
 import { discoverAiModels } from "@/lib/server/ai-models";
 import { assertLocalAiContext } from "@/lib/ai-local-context";
+import { finishAiUsage, startAiUsage, type AiTask } from "@/lib/ai-usage-store";
+import { getDatabase } from "@/lib/server/database";
 
 export type AiRunOptions = {
   prompt: string;
   webSearch?: boolean;
   maxOutputTokens?: number;
+  task?: AiTask;
 };
 
 export type AiRunResult = {
@@ -226,22 +229,35 @@ function chatCompletionText(payload: Record<string, unknown>) {
 }
 
 async function runOpenRouter(key: string, model: string, options: AiRunOptions) {
-  const payload = await providerFetch("openrouter", "https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "user", content: options.prompt }],
-      max_tokens: boundedTokens(options.maxOutputTokens),
-      stream: false,
-    }),
-  });
+  const database = getDatabase();
+  const usageId = startAiUsage(database, model, options.task);
+  let payload: Record<string, unknown>;
+  try {
+    payload = await providerFetch("openrouter", "https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: options.prompt }],
+        max_tokens: boundedTokens(options.maxOutputTokens),
+        stream: false,
+      }),
+    });
+  } catch (error) {
+    // A timed-out or rejected request may still have been billed upstream.
+    finishAiUsage(database, usageId, null, "failed");
+    throw error;
+  }
   // HTTP-200 diagnostics can contain an error and echo private evidence.
   const choices = Array.isArray(payload.choices) ? payload.choices : [];
   const first = choices[0] as { finish_reason?: unknown; error?: unknown } | undefined;
-  if (payload.error || first?.error || ["error", "content_filter"].includes(String(first?.finish_reason)))
+  const failed = Boolean(payload.error || first?.error || ["error", "content_filter"].includes(String(first?.finish_reason)));
+  const incomplete = ["length", "max_tokens", "context_length"].includes(String(first?.finish_reason));
+  // Record charged tokens even when an incomplete result cannot become a story.
+  finishAiUsage(database, usageId, payload, failed ? "failed" : incomplete ? "incomplete" : "completed");
+  if (failed)
     throw new Error("OpenRouter could not complete the request. Check the model, credits and account restrictions, then retry.");
-  if (["length", "max_tokens", "context_length"].includes(String(first?.finish_reason)))
+  if (incomplete)
     throw new Error("OpenRouter stopped before completing its answer. Choose a model with sufficient capacity and retry; this incomplete result was not saved.");
   return chatCompletionText(payload);
 }

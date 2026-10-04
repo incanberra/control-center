@@ -118,6 +118,12 @@ The selected provider is used for bounded background jobs:
 
 Keys can instead be supplied as `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or `XAI_API_KEY` in `.env.local`. Environment keys are still inert until the matching provider is selected in Settings. Cloud calls can incur usage charges. Saved keys remain in the local server-side settings file, never return through the Settings API, and are not sent to any unselected provider.
 
+### OpenRouter usage and costs
+
+**Settings → AI curation → Usage & costs** shows this app's OpenRouter input/output tokens, reported costs, model totals and recent tasks over 24 hours, 7 days or 30 days. Recording starts with this feature; historical requests from before installation are not reconstructed. Each outbound inference attempt gets a durable local ledger entry. Charged usage in incomplete responses is retained, and requests lacking provider accounting are marked unknown rather than free. Reasoning and cached tokens are subsets of the reported output/input counts, not extra tokens added to the total. The ledger stores accounting fields, not prompts, email bodies or API keys.
+
+**Check OpenRouter balance** reads key usage/limits and account credits without running inference. These account totals can include scanners or other applications using the same key and are kept separate from this app's ledger. The workload calculator uses the selected model's currently listed input/output rates. Amounts are US dollars; estimates can differ from bills because of caching, reasoning, price changes and credit-purchase fees. The [OpenRouter activity page](https://openrouter.ai/activity) remains the authoritative account history.
+
 ### Local models
 
 Start the local server in LM Studio or Ollama and load a text model there first. Choose that provider in Control Center, use the default loopback endpoint or enter its local port, then select **Reload models**. Control Center does not install, download, or load models. An optional token is supported if your local server requires one; most local setups do not need a key. Ollama cloud models are not listed, and `OLLAMA_API_KEY` is deliberately not used as a local credential.

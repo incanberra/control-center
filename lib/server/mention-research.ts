@@ -118,6 +118,7 @@ export async function researchMentionsWithAi(
   );
   const result = settleMentionWork(groups, MENTION_AI_CONCURRENCY, async (identities) => {
     const response = await runConfiguredAi(settings, {
+      task: "mention research",
       webSearch: true,
       maxOutputTokens: 2_500,
       prompt: researchPrompt(settings, identities, options.windowDays),

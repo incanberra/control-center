@@ -7,6 +7,7 @@ import { AI_KEY_PROVIDERS, AI_PROVIDER_LABELS, DEFAULT_AI_MODELS, DEFAULT_LOCAL_
 import { modelOverrideAfterProviderChange } from "@/lib/ai-settings";
 import { SettingsInput } from "@/components/settings-input";
 import styles from "./ai-provider-settings.module.css";
+import { AiUsagePanel } from "./ai-usage-panel";
 
 export type AiSettingsDraft = NonNullable<SettingsUpdate["ai"]> & Pick<PublicSettings["ai"], "keySet" | "keySource">;
 
@@ -130,5 +131,6 @@ export function AiProviderSettings({ value, onChange }: {
       <ShieldCheck size={17} />
       <p>Saved keys stay server-side and are never sent back to your browser. Newsletter text, with email addresses and subscriber tracking links masked, goes only to your selected provider. Tasks, reminders, and other private connector content are not sent. {local ? "Local endpoints are restricted to this computer; disable LM Link, remote forwarding, or other proxy features in your model app if you want processing to stay on this computer. This app does not download or load models for you." : "Background processing pauses on provider failure, while saved stories remain available."}</p>
     </div>
+    <AiUsagePanel model={provider === "openrouter" ? models.find((model) => model.id === (value.model || defaultModel)) : undefined} />
   </div>;
 }

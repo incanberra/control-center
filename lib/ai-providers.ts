@@ -115,6 +115,7 @@ export function normalizeAiModels(provider: AiKeyProvider, payload: unknown): Ai
     const id = typeof rawId === "string" ? rawId.replace(/^models\//, "") : "";
     if (!isValidAiModelId(id) || !textModelName(id)) return [];
     let label = String(model.display_name || model.displayName || id).slice(0, 200);
+    let ratesPerMillion: Pick<AiModelOption, "inputPricePerMillionUsd" | "outputPricePerMillionUsd"> = {};
     if (provider === "openrouter") {
       const architecture = record(model.architecture);
       if (!Array.isArray(architecture.input_modalities) || !architecture.input_modalities.includes("text") ||
@@ -126,6 +127,7 @@ export function normalizeAiModels(provider: AiKeyProvider, payload: unknown): Ai
       if (rates.every((rate) => Number.isFinite(rate) && rate >= 0)) {
         const price = (rate: number) => (rate * 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 3 });
         label += ` · US$${price(rates[0])} in / $${price(rates[1])} out per 1M tokens`;
+        ratesPerMillion = { inputPricePerMillionUsd: rates[0] * 1_000_000, outputPricePerMillionUsd: rates[1] * 1_000_000 };
       }
     }
     if (provider === "openai") {
@@ -159,7 +161,7 @@ export function normalizeAiModels(provider: AiKeyProvider, payload: unknown): Ai
       }
       label = `${label} · loaded`;
     }
-    return [{ id, label, ...(provider === "ollama" ? { contextLength: actualContextLength(model.context_length) } : {}) }];
+    return [{ id, label, ...ratesPerMillion, ...(provider === "ollama" ? { contextLength: actualContextLength(model.context_length) } : {}) }];
   });
   return [...new Map(options.map((model) => [model.id, model])).values()]
     .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));

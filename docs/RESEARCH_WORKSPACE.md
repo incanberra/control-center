@@ -16,7 +16,9 @@ The initial direction is a personal geoeconomics workspace: Monitor for developm
 
 Schema version 7 adds `content_reviews`; it preserves stories, tasks, reminders and existing archive state. The database initializer makes a consistent pre-migration SQLite copy under the private data directory's `migration-backups` folder. Existing backup tooling includes the new table because it backs up the entire SQLite database.
 
-Run `npm run backup` before updating an installation with valuable data. To return to the old app, stop the app, retain a copy of the current data, and restore the pre-migration database into a separate data directory. Point `CONTROL_CENTER_DATA_DIR` at that directory and run the old revision. The old schema guard correctly refuses a schema-7 database; do not downgrade by editing `user_version`.
+Schema version 8 adds `ai_usage` for OpenRouter request accounting. It preserves the existing monitor, newsletter, task and reminder data and uses the same pre-migration backup mechanism. The usage panel separates this app's recorded requests from account-wide key and credit totals; no past app usage is fabricated.
+
+Run `npm run backup` before updating an installation with valuable data. To return to the old app, stop the app, retain a copy of the current data, and restore the pre-migration database into a separate data directory. Point `CONTROL_CENTER_DATA_DIR` at that directory and run the old revision. The old schema guard correctly refuses a newer database; do not downgrade by editing `user_version`.
 
 Setup documentation and runtime version files now agree on Node 24.13+. The lockfile includes compatible security updates. Any remaining development-dependency advisories should be assessed separately before adopting a breaking toolchain change.
 

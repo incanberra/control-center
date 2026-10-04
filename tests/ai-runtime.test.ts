@@ -3,7 +3,7 @@ import { registerHooks } from "node:module";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
+import test, { before, after } from "node:test";
 import type { StoredSettings } from "../lib/server/settings";
 import type { AiKeyProvider } from "../lib/types";
 import { DEFAULT_LOCAL_AI_URLS } from "../lib/ai-providers";
@@ -72,6 +72,21 @@ test("OpenRouter extraction sends only its key to the fixed endpoint with bounde
   assert.equal(result.text, '{"stories":[]}');
 });
 
+let usageTestDirectory: string;
+const previousUsageDirectory = process.env.CONTROL_CENTER_DATA_DIR;
+before(async () => {
+  usageTestDirectory = await mkdtemp(path.join(os.tmpdir(), "cc-ai-runtime-usage-"));
+  process.env.CONTROL_CENTER_DATA_DIR = usageTestDirectory;
+});
+after(async () => {
+  globalThis.controlCenterDatabase?.close();
+  globalThis.controlCenterDatabase = undefined;
+  if (previousUsageDirectory === undefined) delete process.env.CONTROL_CENTER_DATA_DIR;
+  else process.env.CONTROL_CENTER_DATA_DIR = previousUsageDirectory;
+  assert.ok(path.resolve(usageTestDirectory).startsWith(path.resolve(os.tmpdir()) + path.sep));
+  await rm(usageTestDirectory, { recursive: true, force: true });
+});
+
 test("OpenRouter refuses web search and rejects truncated or HTTP-200 errors without exposing evidence", async () => {
   const { runConfiguredAi } = await import("../lib/server/ai");
   let calls = 0;
@@ -89,6 +104,28 @@ test("OpenRouter refuses web search and rejects truncated or HTTP-200 errors wit
         (error: Error) => /could not complete|incomplete result was not saved/.test(error.message) && !/private newsletter|test-key/.test(error.message));
     });
   }
+});
+
+test("OpenRouter records billed tokens before rejecting an incomplete result and tracks task without evidence", async () => {
+  const { runConfiguredAi } = await import("../lib/server/ai");
+  const { getDatabase } = await import("../lib/server/database");
+  const { readAiUsage } = await import("../lib/ai-usage-store");
+  const before = readAiUsage(getDatabase(), 1).requests;
+  await withFetch((async () => Response.json({ id: "gen-cost-test", usage: {
+    prompt_tokens: 500, completion_tokens: 100, cost: 0.002,
+    prompt_tokens_details: { cached_tokens: 100 }, completion_tokens_details: { reasoning_tokens: 20 },
+  }, choices: [{ finish_reason: "length", message: { content: "unfinished private evidence" } }] })) as typeof fetch, async () => {
+    await assert.rejects(runConfiguredAi(settingsFor("openrouter", "test/model"), { prompt: "private evidence", task: "newsletter extraction" }), /incomplete result/);
+  });
+  const report = readAiUsage(getDatabase(), 1);
+  assert.equal(report.requests, before + 1);
+  const billed = report.recent.find((row) => row.model === "test/model")!;
+  assert.equal(billed.inputTokens, 500);
+  assert.equal(billed.outputTokens, 100);
+  assert.equal(billed.costUsd, 0.002);
+  assert.equal(billed.status, "incomplete");
+  assert.equal(billed.task, "newsletter extraction");
+  assert.doesNotMatch(JSON.stringify(report), /private evidence|openrouter-test-key/);
 });
 
 test("OpenRouter settings persist privately and preserve existing Gmail tokens and other provider keys", async () => {

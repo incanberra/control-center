@@ -12,6 +12,8 @@ export type AiModelOption = {
   label: string;
   /** Actual loaded capacity, never the model's theoretical maximum. */
   contextLength?: number;
+  inputPricePerMillionUsd?: number;
+  outputPricePerMillionUsd?: number;
 };
 export type AiModelsResponse = {
   provider: AiProvider;
