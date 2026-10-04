@@ -199,7 +199,7 @@ async function collectMentions(
       provider: "Broad web research",
       state: "disabled",
       message: configuredAiReady(settings) && !aiSupportsWebSearch(settings.ai.provider)
-        ? "This local provider summarizes verified mentions but cannot search the web; Google News and Bing News remain active."
+        ? "This provider summarizes verified mentions but has no built-in web search in this app; Google News and Bing News remain active."
         : "AI web research is off or no key is configured; Google News and Bing News remain active.",
     };
   } else {

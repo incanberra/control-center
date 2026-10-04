@@ -96,7 +96,7 @@ const defaults: StoredSettings = {
   ai: {
     provider: "none",
     model: "",
-    apiKeys: { openai: "", anthropic: "", gemini: "", xai: "", lmstudio: "", ollama: "" },
+    apiKeys: { openrouter: "", openai: "", anthropic: "", gemini: "", xai: "", lmstudio: "", ollama: "" },
     localBaseUrls: { ...DEFAULT_LOCAL_AI_URLS },
   },
   dailyBrief: { sourceLabels: [], lookbackDays: 7, sections: defaultBriefSections },
@@ -253,6 +253,7 @@ export function toPublicSettings(settings: StoredSettings): PublicSettings {
       model: settings.ai.model,
       localBaseUrls: { ...DEFAULT_LOCAL_AI_URLS, ...settings.ai.localBaseUrls },
       keySet: {
+        openrouter: Boolean(configuredAiApiKey(settings, "openrouter")),
         openai: Boolean(configuredAiApiKey(settings, "openai")),
         anthropic: Boolean(configuredAiApiKey(settings, "anthropic")),
         gemini: Boolean(configuredAiApiKey(settings, "gemini")),
@@ -261,6 +262,7 @@ export function toPublicSettings(settings: StoredSettings): PublicSettings {
         ollama: Boolean(configuredAiApiKey(settings, "ollama")),
       },
       keySource: {
+        openrouter: aiKeySource("openrouter"),
         openai: aiKeySource("openai"),
         anthropic: aiKeySource("anthropic"),
         gemini: aiKeySource("gemini"),

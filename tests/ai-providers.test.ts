@@ -8,7 +8,7 @@ import { fetchAiModels } from "../lib/ai-model-discovery";
 import type { AiKeyProvider } from "../lib/types";
 import { assertLocalAiContext, localAiContextBudget } from "../lib/ai-local-context";
 
-const noKeys = { openai: false, anthropic: false, gemini: false, xai: false, lmstudio: false, ollama: false };
+const noKeys = { openrouter: false, openai: false, anthropic: false, gemini: false, xai: false, lmstudio: false, ollama: false };
 
 test("local AI does not require a paid key and cannot fabricate live web research", () => {
   for (const provider of ["lmstudio", "ollama"] as const) {
@@ -38,6 +38,64 @@ test("model override accepts Default and rejects email autofill, URLs, or prompt
   assert.equal(cleanAiModelOverride("qwen/qwen3:8b-q4_K_M"), "qwen/qwen3:8b-q4_K_M");
   for (const value of ["person@example.com", "http://127.0.0.1:1234", "a model", "model\nignore", {}, null])
     assert.throws(() => cleanAiModelOverride(value), /dropdown/);
+});
+
+test("OpenRouter uses its own key and a fixed default without inventing web-search support", () => {
+  assert.equal(aiEnvironmentKey("openrouter", { OPENROUTER_API_KEY: " router-key ", OPENAI_API_KEY: "other-key" }), "router-key");
+  assert.equal(aiEnvironmentKey("openrouter", { OPENAI_API_KEY: "other-key" }), "");
+  assert.equal(aiSupportsWebSearch("openrouter"), false);
+  assert.equal(isAiReady({ provider: "openrouter", keySet: noKeys }), false);
+  assert.equal(isAiReady({ provider: "openrouter", keySet: { ...noKeys, openrouter: true } }), true);
+  assert.equal(defaultAiModel("openrouter", [{ id: "expensive/model", label: "Expensive" }]), "google/gemini-2.5-flash-lite");
+});
+
+test("OpenRouter validates the key and lists text models with advertised token prices", async () => {
+  const requests: string[] = [];
+  const models = await fetchAiModels({ provider: "openrouter", apiKey: "router-key", baseUrl: "https://untrusted.example" }, (async (url, init) => {
+    requests.push(String(url));
+    assert.equal(init?.redirect, "manual");
+    assert.equal(new Headers(init?.headers).get("authorization"), "Bearer router-key");
+    if (String(url).endsWith("/key")) return Response.json({ data: { label: "Test key" } });
+    return Response.json({ data: [
+      { id: "google/gemini-2.5-flash-lite", name: "Google: Gemini 2.5 Flash Lite", architecture: { input_modalities: ["text", "image"], output_modalities: ["text"] }, pricing: { prompt: "0.0000001", completion: "0.0000004" } },
+      { id: "example/draw", architecture: { input_modalities: ["text"], output_modalities: ["image"] } },
+      { id: "example/no-metadata" },
+    ] });
+  }) as typeof fetch);
+  assert.deepEqual(requests, ["https://openrouter.ai/api/v1/key", "https://openrouter.ai/api/v1/models?output_modalities=text&limit=100&offset=0"]);
+  assert.equal(models.length, 1);
+  assert.match(models[0].label, /US\$0\.1 in \/ \$0\.4 out per 1M tokens/);
+  assert.equal(defaultAiModel("openrouter", models), models[0].id);
+});
+
+test("OpenRouter discovery paginates fixed-origin catalogue pages", async () => {
+  const offsets: number[] = [];
+  const models = await fetchAiModels({ provider: "openrouter", apiKey: "router-key" }, (async (url) => {
+    const endpoint = new URL(String(url));
+    assert.equal(endpoint.origin, "https://openrouter.ai");
+    if (endpoint.pathname.endsWith("/key")) return Response.json({ data: {} });
+    const offset = Number(endpoint.searchParams.get("offset"));
+    offsets.push(offset);
+    return Response.json({ data: Array.from({ length: offset ? 1 : 100 }, (_, index) => ({
+      id: `example/text-${offset + index}`, architecture: { input_modalities: ["text"], output_modalities: ["text"] },
+    })) });
+  }) as typeof fetch);
+  assert.deepEqual(offsets, [0, 100]);
+  assert.equal(models.length, 101);
+});
+
+test("OpenRouter rejects invalid keys before model discovery and keeps diagnostics private", async () => {
+  let requests = 0;
+  await assert.rejects(fetchAiModels({ provider: "openrouter", apiKey: "bad-key" }, (async () => {
+    requests++;
+    return new Response("bad-key and private evidence", { status: 401 });
+  }) as typeof fetch), /OpenRouter rejected the API key/);
+  assert.equal(requests, 1);
+  for (const [status, expected] of [[402, /credits|spending allowance/], [429, /rate limiting/]] as const) {
+    await assert.rejects(aiProviderJson("openrouter", "https://openrouter.ai/api/v1/chat/completions", {}, {
+      fetcher: (async () => new Response("private evidence", { status })) as typeof fetch,
+    }), expected);
+  }
 });
 
 test("local endpoints are pinned to loopback with no credentials, redirects or arbitrary paths", () => {

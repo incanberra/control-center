@@ -4,7 +4,7 @@ export type IndustrySource = {
   url: string;
 };
 
-export type AiProvider = "none" | "openai" | "anthropic" | "gemini" | "xai" | "lmstudio" | "ollama";
+export type AiProvider = "none" | "openrouter" | "openai" | "anthropic" | "gemini" | "xai" | "lmstudio" | "ollama";
 export type AiKeyProvider = Exclude<AiProvider, "none">;
 export type LocalAiProvider = Extract<AiKeyProvider, "lmstudio" | "ollama">;
 export type AiModelOption = {

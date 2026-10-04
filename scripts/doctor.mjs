@@ -88,10 +88,11 @@ if (existsSync(settingsPath)) {
     console.log(
       `Settings: readable (${settings.industry?.sources?.length || 0} industry sources, ${settings.audience?.accounts?.length || 0} audience accounts)`,
     );
-    const aiProvider = ["openai", "anthropic", "gemini", "xai", "lmstudio", "ollama"].includes(settings.ai?.provider)
+    const aiProvider = ["openrouter", "openai", "anthropic", "gemini", "xai", "lmstudio", "ollama"].includes(settings.ai?.provider)
       ? settings.ai.provider
       : "none";
     const environmentKey = {
+      openrouter: process.env.OPENROUTER_API_KEY,
       openai: process.env.OPENAI_API_KEY,
       anthropic: process.env.ANTHROPIC_API_KEY,
       gemini: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,

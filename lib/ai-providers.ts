@@ -1,8 +1,9 @@
 import type { AiKeyProvider, AiModelOption, AiProvider, LocalAiProvider, PublicSettings } from "./types";
 
-export const AI_KEY_PROVIDERS: AiKeyProvider[] = ["openai", "anthropic", "gemini", "xai", "lmstudio", "ollama"];
+export const AI_KEY_PROVIDERS: AiKeyProvider[] = ["openrouter", "openai", "anthropic", "gemini", "xai", "lmstudio", "ollama"];
 export const AI_PROVIDER_LABELS: Record<AiProvider, string> = {
   none: "Off — built-in ranking only",
+  openrouter: "OpenRouter",
   openai: "OpenAI",
   anthropic: "Anthropic",
   gemini: "Google Gemini",
@@ -11,6 +12,7 @@ export const AI_PROVIDER_LABELS: Record<AiProvider, string> = {
   ollama: "Ollama · local",
 };
 export const DEFAULT_AI_MODELS: Record<AiKeyProvider, string> = {
+  openrouter: "google/gemini-2.5-flash-lite",
   openai: "gpt-5-mini",
   anthropic: "claude-sonnet-4-20250514",
   gemini: "gemini-3.7-flash",
@@ -32,11 +34,12 @@ export function isLocalAiProvider(provider: AiProvider): provider is LocalAiProv
 }
 
 export function aiSupportsWebSearch(provider: AiProvider) {
-  return provider !== "none" && !isLocalAiProvider(provider);
+  return provider !== "none" && provider !== "openrouter" && !isLocalAiProvider(provider);
 }
 
 export function aiEnvironmentKey(provider: AiKeyProvider, environment: Record<string, string | undefined>) {
   return ({
+    openrouter: environment.OPENROUTER_API_KEY,
     openai: environment.OPENAI_API_KEY,
     anthropic: environment.ANTHROPIC_API_KEY,
     gemini: environment.GEMINI_API_KEY || environment.GOOGLE_API_KEY,
@@ -112,6 +115,19 @@ export function normalizeAiModels(provider: AiKeyProvider, payload: unknown): Ai
     const id = typeof rawId === "string" ? rawId.replace(/^models\//, "") : "";
     if (!isValidAiModelId(id) || !textModelName(id)) return [];
     let label = String(model.display_name || model.displayName || id).slice(0, 200);
+    if (provider === "openrouter") {
+      const architecture = record(model.architecture);
+      if (!Array.isArray(architecture.input_modalities) || !architecture.input_modalities.includes("text") ||
+          !Array.isArray(architecture.output_modalities) || !architecture.output_modalities.includes("text")) return [];
+      label = String(model.name || id).slice(0, 160);
+      const pricing = record(model.pricing);
+      const rates = [pricing.prompt, pricing.completion].map((rate) =>
+        (typeof rate === "string" && rate.trim()) || typeof rate === "number" ? Number(rate) : NaN);
+      if (rates.every((rate) => Number.isFinite(rate) && rate >= 0)) {
+        const price = (rate: number) => (rate * 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 3 });
+        label += ` · US$${price(rates[0])} in / $${price(rates[1])} out per 1M tokens`;
+      }
+    }
     if (provider === "openai") {
       if (!/^(?:gpt-(?:[3-9]|[1-9]\d)|o\d|chatgpt-|ft:(?:gpt-|o\d))/i.test(id)) return [];
       // Specialized search/agent and legacy Completions-only models do not use
@@ -156,5 +172,7 @@ export function defaultAiModel(provider: AiKeyProvider, models: AiModelOption[])
     return [...models].sort((left, right) => (right.contextLength || 0) - (left.contextLength || 0))[0]?.id || "";
   }
   const recommended = DEFAULT_AI_MODELS[provider];
+  // Catalogue changes must not silently select an arbitrary, expensive model.
+  if (provider === "openrouter") return recommended;
   return models.find((model) => model.id === recommended)?.id || models[0]?.id || recommended;
 }

@@ -105,7 +105,9 @@ The Audience page includes platform-colored account cards, a platform mix, and i
 
 No AI key is required for installation or for Industry, news Mention discovery, sitemap, RSS, Audience, Task, Reminder, or the daily snapshot features. **Newsletter intelligence requires a configured AI model**, either a cloud provider with a key or a running local model.
 
-Under **Settings → AI curation**, choose **OpenAI**, **Anthropic**, **Gemini**, **Grok (xAI)**, **LM Studio**, or **Ollama**. Keep **Default** selected for an automatic model choice or choose a model returned by that provider. Cloud lists use the selected provider's key. Local lists show only currently loaded, supported text-generation models, not every model available to download. **Reload models** updates the list without saving changes or starting a collector.
+Under **Settings → AI curation**, choose **OpenRouter**, **OpenAI**, **Anthropic**, **Gemini**, **Grok (xAI)**, **LM Studio**, or **Ollama**. Keep **Default** selected for an automatic model choice or choose a model returned by that provider. Cloud lists use the selected provider's key. Local lists show only currently loaded, supported text-generation models, not every model available to download. **Reload models** updates the list without saving changes or starting a collector.
+
+**OpenRouter** uses its own API key, separately from any ChatGPT or Gemini chat subscription. Model discovery validates the key and loads a bounded, paginated text-model catalogue without making inference calls. Listed input/output token prices appear in the model menu where available. Default is the fixed `google/gemini-2.5-flash-lite` model, never an arbitrary catalogue entry or automatic router. Set an OpenRouter key spending limit to control the app's allowance. This adapter extracts and ranks collected evidence; it does not enable OpenRouter web-search plugins. Public news collectors continue to run. Invalid keys, exhausted credits, rate limits and incomplete answers remain visible; raw provider error bodies are never displayed. OpenRouter routes evidence to the selected model's serving provider under your OpenRouter account settings.
 
 The selected provider is used for bounded background jobs:
 
@@ -114,7 +116,7 @@ The selected provider is used for bounded background jobs:
 - summaries and priority ranking for already-verified Mention pages;
 - newsletter story extraction, priority ranking, and cross-newsletter deduplication, using only the separately connected mailbox's matching issues.
 
-Keys can instead be supplied as `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or `XAI_API_KEY` in `.env.local`. Environment keys are still inert until the matching provider is selected in Settings. Cloud calls can incur usage charges. Saved keys remain in the local server-side settings file, never return through the Settings API, and are not sent to any unselected provider.
+Keys can instead be supplied as `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or `XAI_API_KEY` in `.env.local`. Environment keys are still inert until the matching provider is selected in Settings. Cloud calls can incur usage charges. Saved keys remain in the local server-side settings file, never return through the Settings API, and are not sent to any unselected provider.
 
 ### Local models
 

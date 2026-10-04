@@ -29,6 +29,21 @@ export async function fetchAiModels(
     headers: { ...headers, ...init.headers },
   }, { fetcher, timeoutMs: 12_000 });
 
+  if (provider === "openrouter") {
+    // Validate the key separately from the public catalogue, without inference.
+    const key = await request("https://openrouter.ai/api/v1/key");
+    if (!key.data || typeof key.data !== "object" || Array.isArray(key.data))
+      throw new Error("OpenRouter could not validate this key. Check it and reload models.");
+    const models: unknown[] = [];
+    for (let offset = 0; offset < 1_000; offset += 100) {
+      const payload = await request(`https://openrouter.ai/api/v1/models?output_modalities=text&limit=100&offset=${offset}`);
+      if (!Array.isArray(payload.data)) throw new Error("OpenRouter did not return a model catalogue.");
+      models.push(...payload.data);
+      if (payload.data.length < 100) break;
+    }
+    return normalizeAiModels(provider, { data: models });
+  }
+
   if (provider === "lmstudio") {
     const root = localAiBaseUrl(provider, connection.baseUrl);
     let data: Record<string, unknown>;
