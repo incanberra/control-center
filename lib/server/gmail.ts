@@ -1,6 +1,7 @@
 import "server-only";
 
 import { readSettings, saveGmailTokens } from "@/lib/server/settings";
+import { gmailApiErrorMessage } from "@/lib/gmail-errors";
 
 export async function getGmailAccessToken() {
   const settings = await readSettings();
@@ -33,6 +34,9 @@ export async function gmailJson<T>(path: string, accessToken: string): Promise<T
     cache: "no-store",
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!response.ok) throw new Error(`Gmail API returned ${response.status}.`);
+  if (!response.ok) {
+    const payload: unknown = await response.json().catch(() => null);
+    throw new Error(gmailApiErrorMessage(response.status, payload));
+  }
   return response.json() as Promise<T>;
 }

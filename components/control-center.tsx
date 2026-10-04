@@ -65,6 +65,7 @@ import type {
 import {
   GOOGLE_OAUTH_CLIENT_ID_ERROR,
   isGoogleOAuthClientId,
+  GOOGLE_GMAIL_READ_PERMISSION_ERROR,
 } from "@/lib/google-oauth";
 import { isDailyBriefItemInWindow } from "@/lib/brief-window";
 import {
@@ -2012,6 +2013,8 @@ function SettingsView({
         );
       if (oauthError === "oauth-client-id")
         setNotice(GOOGLE_OAUTH_CLIENT_ID_ERROR);
+      if (oauthError === "oauth-scope")
+        setNotice(GOOGLE_GMAIL_READ_PERMISSION_ERROR);
       if (oauthError === "oauth-state")
         setNotice(
           "The Google connection expired before it completed. Please try again.",
@@ -2564,6 +2567,7 @@ function SettingsView({
                   <p>
                     Connect any Google account, including one created only for
                     newsletter subscriptions. Gmail access stays read-only.
+                    On Google&apos;s consent screen, tick the permission to read your email.
                     Newsletter intelligence also needs a cloud or local model
                     configured in AI curation. Issue text goes only to that selected provider.
                   </p>
@@ -2574,7 +2578,7 @@ function SettingsView({
                   <CheckCircle2 />
                   <div>
                     <b>{draft.newsletters.connectedEmail}</b>
-                    <p>Connected with Gmail read-only access.</p>
+                    <p>Google account connected. Refresh intelligence to check mailbox access.</p>
                   </div>
                   <button
                     type="button"

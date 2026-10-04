@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { googleOAuthRequestUrl, isGoogleOAuthClientId } from "../lib/google-oauth";
+import { googleOAuthRequestUrl, hasGmailReadScope, isGoogleOAuthClientId } from "../lib/google-oauth";
 
 test("accepts Google OAuth client IDs", () => {
   assert.equal(
@@ -23,6 +23,18 @@ test("rejects partial and lookalike Google OAuth client IDs", () => {
     ),
     false,
   );
+});
+
+test("Google sign-in alone cannot satisfy permission to read Gmail bodies", () => {
+  for (const scope of [undefined, null, [], "", "openid email",
+    "https://www.googleapis.com/auth/gmail.metadata",
+    "https://www.googleapis.com/auth/gmail.readonly.example.com"])
+    assert.equal(hasGmailReadScope(scope), false);
+  for (const scope of ["https://www.googleapis.com/auth/gmail.readonly",
+    "openid email https://www.googleapis.com/auth/gmail.readonly",
+    "  openid\nhttps://www.googleapis.com/auth/gmail.modify  ",
+    "https://mail.google.com/"])
+    assert.equal(hasGmailReadScope(scope), true);
 });
 
 test("OAuth preserves the browser loopback host despite Next's internal localhost URL", () => {
