@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { listContentItems } from "./archive-store";
 import { isFreshTimestamp } from "./freshness";
 import type { LiveFeedResponse, LiveStory, StoryReview } from "./types";
+import { currentFeedbackByStory, initializeFeedbackStore } from "./feedback-store";
 
 export function initializeMonitorStore(database: DatabaseSync) {
   database.exec(`
@@ -15,7 +16,7 @@ export function initializeMonitorStore(database: DatabaseSync) {
         REFERENCES content_items(category, external_id) ON DELETE CASCADE
     );
   `);
-  return database;
+  return initializeFeedbackStore(database);
 }
 
 export type ReviewUpdate = { ids: string[]; reviewed?: boolean; saved?: boolean };
@@ -74,8 +75,9 @@ export function withMonitorState(database: DatabaseSync, feed: LiveFeedResponse,
   const byId = new Map<string, StoryReview>(reviews.map((row) => [row.external_id, {
     reviewedAt: row.reviewed_at, savedAt: row.saved_at,
   }]));
+  const feedback = currentFeedbackByStory(database);
   const attach = (item: LiveStory): LiveStory => ({
-    ...item, review: byId.get(item.id) || { reviewedAt: null, savedAt: null },
+    ...item, review: byId.get(item.id) || { reviewedAt: null, savedAt: null }, feedback: feedback.get(item.id) || null,
   });
   const library = listContentItems<LiveStory>(database, "industry");
   const currentIds = new Set(feed.items.map((item) => item.id));

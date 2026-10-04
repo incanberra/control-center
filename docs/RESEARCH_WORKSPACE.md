@@ -14,18 +14,23 @@ The initial direction is a personal geoeconomics workspace: Monitor for developm
 
 ## Migration and recovery
 
+Schema version 9 adds local `editorial_feedback` history. Monitor offers Useful, Too routine, Off-topic and Already knew, optional reasons, revisions and undo. Feedback snapshots retain the original story/source context and literal matches to the configured topic phrases. They are linked to canonical stored story IDs and read at response time, so collector snapshots cannot replace a newer choice. Writes use a current-feedback revision check to avoid overwriting changes from another view. Undo only applies to the current revision and restores the previous remaining choice. Reading, saving and archiving do not create feedback. Ranking and explicit research settings are unchanged; a visible, editable preference profile is a subsequent increment. Feedback writes update the displayed story locally without requesting collection, and the history endpoint only reads the database.
+
 Schema version 7 adds `content_reviews`; it preserves stories, tasks, reminders and existing archive state. The database initializer makes a consistent pre-migration SQLite copy under the private data directory's `migration-backups` folder. Existing backup tooling includes the new table because it backs up the entire SQLite database.
 
 Schema version 8 adds `ai_usage` for OpenRouter request accounting. It preserves the existing monitor, newsletter, task and reminder data and uses the same pre-migration backup mechanism. The usage panel separates this app's recorded requests from account-wide key and credit totals; no past app usage is fabricated.
 
 Run `npm run backup` before updating an installation with valuable data. To return to the old app, stop the app, retain a copy of the current data, and restore the pre-migration database into a separate data directory. Point `CONTROL_CENTER_DATA_DIR` at that directory and run the old revision. The old schema guard correctly refuses a newer database; do not downgrade by editing `user_version`.
 
+Backups now include `.env.local` when present, a checksum/schema/count manifest and recovery instructions. Creation checks a separate restored copy before reporting success; `npm run backup:verify -- --from=<backup-directory>` repeats that check without altering live data. Protect private backups separately from GitHub code history. Keep local operation and SQLite for the personal pilot; cloud hosting and database migration are not prerequisites.
+
 Setup documentation and runtime version files now agree on Node 24.13+. The lockfile includes compatible security updates. Any remaining development-dependency advisories should be assessed separately before adopting a breaking toolchain change.
 
 ## Next increments
 
-1. Catalogue a small selection of real reusable work, with original-file links, descriptions, dates, reuse status and connections between charts, datasets, notebooks and reports. Add search and previews before automated ingestion.
-2. Integrate the existing morning geoeconomics collector through a versioned local JSON export/import. Preserve producer/run identity, source evidence, partial-run status and user review state; avoid duplicate collection or repeat AI summarisation.
-3. Add Topics with a research question, dated changes, linked evidence and linked assets. Shape Today around important updates and research actions.
+1. Use real feedback examples to design a compact, visible, editable and resettable preference profile. Separate relevance, novelty and significance; retain unfamiliar but consequential developments. Do not add inference per button click.
+2. Integrate the existing morning geoeconomics collector and Think Tank Scanner through versioned local JSON export/import. Preserve producer/run identity, source evidence, partial-run status and user review state; avoid duplicate collection or repeat AI summarisation.
+3. Catalogue a small selection of real reusable work, with original-file links, descriptions, dates, reuse status and connections between charts, datasets, notebooks and reports. Add search and previews before automated ingestion.
+4. Add Topics with a research question, dated changes, linked evidence and linked assets. Shape Today around important updates and research actions.
 
 No real asset files, clients, credentials or source subscriptions are seeded by this change. Test stories are explicit fixtures only. Keep private data outside the repository.

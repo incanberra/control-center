@@ -58,6 +58,8 @@ A blocked homepage does not stop feed or sitemap discovery. Raw discoveries are 
 
 The **Monitor** tab provides **Latest**, **Unreviewed**, **Saved**, **History** and **Archived** views. Latest uses the discovery window selected in Settings (1, 3 or 7 days; 1 by default). Unreviewed retains surfaced items until explicitly reviewed or archived, including older history from before this upgrade. Opening a source does not mark it reviewed. Save is independent of review and archive status; saved evidence stays available regardless of age. Both choices survive refreshes, app restarts and backups. **Mark these N reviewed** changes only the currently displayed, filtered batch; **Mark unread** reverses an individual review.
 
+Open **Feedback** beneath a Monitor update to choose **Useful**, **Too routine**, **Off-topic** or **Already knew**, with an optional reason. The **Feedback history** panel records each change, its original story/source/topic context and any undo. Changing a reason and choosing an option saves a new revision; undo restores the prior choice, or removes the current choice if there was none before it. Feedback survives recollection, restarts and backups, independently of Save, review and Archive. This first version records examples locally; it does not yet change selection or build a learned preference profile. Feedback actions and history reads make no AI calls.
+
 Settings offers Australian, US and UK English-language Google News editions, up to 24 topic phrases, and reading targets from 10 to 50 items per collection. New and legacy settings without an edition use Australia. Older configurations exceeding 24 phrases display a coverage warning until shortened. Longer windows recover available source material, not guaranteed complete coverage. Undated feed entries establish a baseline instead of being presented as fresh news. Watched-site updates remain prioritized independently. A selected AI provider can rerank the bounded candidate set; failures automatically fall back to the local importance model. Multiple sources are described as coverage, not independent corroboration.
 
 Monitor reads saved collection results every minute. This does not trigger web or AI collection; the existing server scheduler and **Refresh sources** control collection. Other legacy tabs retain their existing refresh behaviour. Source failures are visible and the last collection time is shown in Australia/Sydney time. The app must be running to collect.
@@ -177,7 +179,7 @@ Existing installations that already contain `./.control-center` continue using t
 Stored files include:
 
 - `settings.json`: configuration, OAuth tokens, and any saved AI/provider keys, owner-readable on POSIX systems;
-- `control-center.sqlite`: raw Industry discoveries, saved collector snapshots, surfaced content, extracted newsletter issue/link metadata, archive state, reminders, and tasks;
+- `control-center.sqlite`: raw Industry discoveries, saved collector snapshots, surfaced content, extracted newsletter issue/link metadata, archive and reading state, editorial feedback history, AI usage, reminders, and tasks;
 - snapshot JSON files: sitemap and audience baselines.
 
 Secrets never return through the Settings API. They remain local, but they are not encrypted at rest. Protect the operating-system account and any backups.
@@ -188,13 +190,23 @@ Secrets never return through the Settings API. They remain local, but they are n
 npm run backup
 ```
 
-This creates a consistent SQLite backup plus settings and snapshot files under `~/Documents/Control Center Backups/<timestamp>`. It is a private full backup and may contain OAuth tokens or AI provider keys.
+This creates a consistent SQLite backup plus settings, snapshot files and the application's `.env.local` (when present) under `~/Documents/Control Center Backups/<timestamp>`. Each backup includes a checksum manifest and recovery instructions. Before reporting success, it checks every copied file and restores a separate temporary database copy, verifying integrity, relationships, schema and table row counts. The live database is not changed. Existing backup artifacts are never overwritten, and the live data directory cannot be used as a destination. It is a private full backup and may contain OAuth tokens or AI provider keys; keep it outside your Git repository.
 
 To choose another destination:
 
 ```bash
 npm run backup -- --to=/absolute/path/to/backup-folder
 ```
+
+To recheck a backup made with the new manifest:
+
+```bash
+npm run backup:verify -- --from=/absolute/path/to/backup-folder
+```
+
+For recovery, stop the app and preserve the current data. Copy the database, settings and snapshot files into a separate recovery directory. If needed, restore `.env.local` into the application folder, changing `CONTROL_CENTER_DATA_DIR` to point to that recovery directory. Use an app version that supports the backup's schema, then check saved evidence, tasks and settings before resuming work. Credentials supplied only through the operating-system environment must be restored separately. Older backups without a manifest remain recoverable but are not supported by `backup:verify`.
+
+Make a new backup before upgrades and after valuable research sessions. GitHub stores committed application code, not the local research database or private configuration. A backup on this computer protects against application/data errors; keep a protected copy on another device or backup service for recovery after loss of the computer.
 
 If startup safely stops on a local-data error, run `npm run doctor`. The app fails closed: it will not render editable empty defaults or overwrite settings, tasks, or reminders after a failed initial read.
 

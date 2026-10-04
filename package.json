@@ -12,6 +12,7 @@
     "launch": "node scripts/launch.mjs",
     "doctor": "node scripts/doctor.mjs",
     "backup": "node scripts/backup.mjs",
+    "backup:verify": "node scripts/verify-backup.mjs",
     "ingest": "node scripts/ingest.mjs",
     "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",

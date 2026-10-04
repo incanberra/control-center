@@ -40,13 +40,13 @@ export function getDatabase() {
     const schema = database.prepare("PRAGMA user_version").get() as unknown as {
       user_version: number;
     };
-    if (schema.user_version > 8) {
+    if (schema.user_version > 9) {
       database.close();
       throw new Error(
-        `This data directory uses schema ${schema.user_version}, but this Control Center supports schema 8. Update the app before opening it.`,
+        `This data directory uses schema ${schema.user_version}, but this Control Center supports schema 9. Update the app before opening it.`,
       );
     }
-    if (databaseExisted && schema.user_version < 8) {
+    if (databaseExisted && schema.user_version < 9) {
       const backupDirectory = path.join(directory, "migration-backups");
       mkdirSync(backupDirectory, { recursive: true, mode: 0o700 });
       const backupPath = path.join(
@@ -67,7 +67,7 @@ export function getDatabase() {
     );
     initializeMonitorStore(initialized);
     initializeAiUsageStore(initialized);
-    if (schema.user_version < 8) initialized.exec("PRAGMA user_version = 8;");
+    if (schema.user_version < 9) initialized.exec("PRAGMA user_version = 9;");
     chmodSync(databasePath, 0o600);
     globalThis.controlCenterDatabase = initialized;
   }

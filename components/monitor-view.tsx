@@ -6,6 +6,7 @@ import type { LiveFeedResponse, LiveStory } from "@/lib/types";
 import { monitorLists, type MonitorView as MonitorTab } from "@/lib/monitor";
 import { sortIndustryItems, type IndustrySortOrder } from "@/lib/industry";
 import styles from "./monitor-view.module.css";
+import { MonitorFeedbackHistory, MonitorStoryFeedback, type FeedbackMutationResponse } from "./monitor-feedback";
 
 const labels: Record<MonitorTab, string> = {
   latest: "Latest", unreviewed: "Unreviewed", saved: "Saved", history: "History", archive: "Archived",
@@ -34,6 +35,7 @@ export function MonitorView({ saveStory, openSettings }: {
   const [sort, setSort] = useState<IndustrySortOrder>("important");
   const [limit, setLimit] = useState(30);
   const [observedAt, setObservedAt] = useState(0);
+  const [feedbackRevision, setFeedbackRevision] = useState(0);
   const sequence = useRef(0);
   const busy = useRef(false);
 
@@ -63,21 +65,30 @@ export function MonitorView({ saveStory, openSettings }: {
     return () => { window.clearInterval(timer); sequence.current += 1; };
   }, [load]);
 
-  async function update(endpoint: string, body: object) {
-    if (busy.current) return;
+  async function update(endpoint: string, body: object, method: "PATCH" | "POST" = "PATCH") {
+    if (busy.current) return false;
     busy.current = true;
     sequence.current += 1;
     setPending(true);
     setError("");
     try {
       const response = await fetch(endpoint, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+        method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Could not save your change.");
-      await load();
+      if (endpoint === "/api/monitor/feedback") {
+        const change = payload as FeedbackMutationResponse;
+        // Feedback changes never collect sources or invoke AI, even on a missing collector cache.
+        const attach = (item: LiveStory) => item.id === change.storyId ? { ...item, feedback: change.feedback } : item;
+        setData((previous) => previous ? { ...previous, items: previous.items.map(attach),
+          historyItems: previous.historyItems?.map(attach), archivedItems: previous.archivedItems?.map(attach) } : previous);
+        setFeedbackRevision((value) => value + 1);
+      } else await load();
+      return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not save your change.");
+      return false;
     } finally {
       busy.current = false;
       setPending(false);
@@ -93,6 +104,7 @@ export function MonitorView({ saveStory, openSettings }: {
   const reviewBatch = visible.slice(0, 100);
   const disabled = loading || pending;
   const stale = data && (!Number.isFinite(Date.parse(data.checkedAt)) || observedAt - Date.parse(data.checkedAt) > 24 * 60 * 60 * 1000);
+  const changeFeedback = (body: object, method?: "PATCH" | "POST") => update("/api/monitor/feedback", body, method);
 
   return <div className={`view ${styles.monitor}`}>
     <div className="page-heading">
@@ -158,6 +170,7 @@ export function MonitorView({ saveStory, openSettings }: {
             <a href={status.endpoint} target="_blank" rel="noreferrer">View source <ExternalLink size={12} /></a>
           </div>)}</div>
         </details>}
+        <MonitorFeedbackHistory revision={feedbackRevision} disabled={disabled} change={changeFeedback} />
         <div className="story-stack">{visible.map((item, index) => <article className="story-card" key={item.id}>
           <div className="story-index">{String(index + 1).padStart(2, "0")}</div>
           <div className="story-body">
@@ -188,6 +201,7 @@ export function MonitorView({ saveStory, openSettings }: {
               </button>}
               <a href={item.url} target="_blank" rel="noreferrer"><ExternalLink size={15} /> Open source</a>
             </div></div>
+            <MonitorStoryFeedback item={item} disabled={disabled} change={changeFeedback} />
           </div>
         </article>)}</div>
         {!items.length && <section className="panel empty-state"><Check size={24} />

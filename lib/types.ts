@@ -122,6 +122,21 @@ export type ContentWorkflow = {
 
 export type StoryReview = { reviewedAt: string | null; savedAt: string | null };
 
+export type FeedbackChoice = "useful" | "too-routine" | "off-topic" | "already-knew";
+export type StoryFeedback = {
+  id: number;
+  choice: FeedbackChoice;
+  reason: string;
+  createdAt: string;
+};
+export type FeedbackHistoryEntry = StoryFeedback & {
+  storyId: string;
+  context: { title: string; source: string; url: string; publishedAt: string; summary: string; topics: string[] };
+  undoneAt: string | null;
+  current: boolean;
+};
+export type FeedbackHistoryResponse = { items: FeedbackHistoryEntry[]; nextBefore: number | null };
+
 export type LiveStory = {
   id: string;
   title: string;
@@ -142,6 +157,7 @@ export type LiveStory = {
   collectionScope?: string;
   workflow?: ContentWorkflow;
   review?: StoryReview;
+  feedback?: StoryFeedback | null;
 };
 
 export type IndustrySourceStatus = {
