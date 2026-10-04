@@ -16,6 +16,7 @@ type IndustryAiCacheOptions = {
   excludedTerms: readonly string[];
   limit: number;
   now: number;
+  preferences?: string;
 };
 
 function normalizedList(values: readonly string[]) {
@@ -52,6 +53,7 @@ export function industryAiCacheKey(
     keywords: normalizedList(options.keywords),
     excludedTerms: normalizedList(options.excludedTerms),
     limit: options.limit,
+    preferences: options.preferences || "",
     twoHourBucket: Math.floor(options.now / (2 * 60 * 60 * 1000)),
     candidates: candidates.map(boundedIndustryAiCandidate),
   })).digest("hex");

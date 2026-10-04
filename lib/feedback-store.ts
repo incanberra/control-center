@@ -113,3 +113,13 @@ export function listFeedbackHistory(database: DatabaseSync, options: { limit?: n
     context: JSON.parse(row.context_json), undoneAt: row.undone_at, current: Boolean(row.current) }));
   return { items, nextBefore: rows.length > limit ? items[items.length - 1].id : null };
 }
+
+export function currentFeedbackExamples(database: DatabaseSync) {
+  const count = Number(database.prepare(`SELECT count(DISTINCT external_id) AS n FROM editorial_feedback
+    WHERE category = 'industry' AND undone_at IS NULL`).get()?.n || 0);
+  const rows = database.prepare(`SELECT * FROM editorial_feedback WHERE id IN (
+    SELECT MAX(id) FROM editorial_feedback WHERE category = 'industry' AND undone_at IS NULL GROUP BY external_id
+  ) ORDER BY id DESC LIMIT 500`).all() as FeedbackRow[];
+  return { count, items: rows.map((row): FeedbackHistoryEntry => ({ ...state(row), storyId: row.external_id,
+    context: JSON.parse(row.context_json), undoneAt: null, current: true })) };
+}

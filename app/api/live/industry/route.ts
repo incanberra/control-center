@@ -7,7 +7,11 @@ import { safeFetchText } from "@/lib/server/safe-fetch";
 import { freshIndustryDiscoveries, sortIndustryItems, splitIndustryLibrary, topicDiscoveryStatus } from "@/lib/industry";
 import { collectionScope } from "@/lib/collection-scope";
 import { industryCacheScope } from "@/lib/collector-scopes";
-import { curateIndustryDiscoveries, selectDiverseIndustryDiscoveries } from "@/lib/industry-curation";
+import { curateIndustryDiscoveries } from "@/lib/industry-curation";
+import { rankWithPreferences, selectWithDiscoveryAllowance } from "@/lib/preference-ranking";
+import { readPreferenceState } from "@/lib/preference-store";
+import { compactPreferenceProfile } from "@/lib/research-preferences";
+import { withoutArchivedDiscoveries } from "@/lib/server/preference-comparison";
 import { listIndustryDiscoveries, pruneIndustryDiscoveries, upsertIndustryDiscoveries } from "@/lib/industry-store";
 import { curateIndustryWithAi } from "@/lib/server/industry-ai";
 import { withMonitorState } from "@/lib/monitor-store";
@@ -51,6 +55,8 @@ async function readTopicNews(keywords: string[], options: IndustryDiscoveryOptio
 
 async function collectIndustry() {
   const settings = await readSettings();
+  const preferenceState = readPreferenceState(getDatabase());
+  const preferenceSelection = { revision: preferenceState.revision, enabled: preferenceState.profile.enabled };
   const discovery = industryDiscoveryOptions(settings.industry);
   const freshnessHours = discovery.lookbackDays * 24;
   const checkedAt = new Date().toISOString();
@@ -79,7 +85,7 @@ async function collectIndustry() {
     });
     const hasSavedLibrary = saved.active.length + saved.archived.length > 0;
     const { archivedItems, historyItems } = splitIndustryLibrary(saved.archived);
-    return Response.json({ configured: hasSavedLibrary, checkedAt, items: saved.active, archivedItems, archiveCount: archivedItems.length, historyItems, historyCount: historyItems.length, errors: hasSavedLibrary ? ["Tracking is paused because no Industry sources are configured. Saved history remains available."] : [], sourceStatuses: [], freshnessHours, discoveredCount: 0, surfacedLimit: settings.industry.dailyLimit, curationMode: "local", providerStatuses: [] } satisfies LiveFeedResponse);
+    return Response.json({ preferenceSelection, configured: hasSavedLibrary, checkedAt, items: saved.active, archivedItems, archiveCount: archivedItems.length, historyItems, historyCount: historyItems.length, errors: hasSavedLibrary ? ["Tracking is paused because no Industry sources are configured. Saved history remains available."] : [], sourceStatuses: [], freshnessHours, discoveredCount: 0, surfacedLimit: settings.industry.dailyLimit, curationMode: "local", providerStatuses: [] } satisfies LiveFeedResponse);
   }
   const snapshots = await readIndustrySnapshots();
   const nextSnapshots = { ...snapshots };
@@ -121,7 +127,7 @@ async function collectIndustry() {
   const database = getDatabase();
   upsertIndustryDiscoveries(database, currentItems, checkedAt);
   pruneIndustryDiscoveries(database, { now: checkedAt });
-  const rawItems = listIndustryDiscoveries<LiveStory>(database, {
+  const rawItems = withoutArchivedDiscoveries(database, listIndustryDiscoveries<LiveStory>(database, {
     since: freshSince,
     until: freshUntil,
     collectionScopes: discoveryScopes,
@@ -129,13 +135,14 @@ async function collectIndustry() {
   }).map((record) => ({
     ...record.item,
     discoveredAt: record.item.discoveredAt || record.firstSeenAt,
-  }));
-  const local = curateIndustryDiscoveries(rawItems, {
+  })));
+  const baseline = curateIndustryDiscoveries(rawItems, {
     now: Date.parse(checkedAt),
     limit: settings.industry.dailyLimit,
     topicTerms: settings.industry.keywords,
     excludeTerms: settings.industry.excludedTerms,
   });
+  const local = rankWithPreferences(baseline, preferenceState.profile, settings.industry.dailyLimit);
   let selected = local.selected;
   let curationMode: NonNullable<LiveFeedResponse["curationMode"]> = "local";
   const providerStatuses: NonNullable<LiveFeedResponse["providerStatuses"]> = [];
@@ -156,6 +163,7 @@ async function collectIndustry() {
         excludedTerms: settings.industry.excludedTerms,
         limit: settings.industry.dailyLimit,
         now: Date.parse(checkedAt),
+        preferences: compactPreferenceProfile(preferenceState.profile),
       });
       const byId = new Map(pool.map((candidate) => [candidate.discoveryId, candidate]));
       const aiScores = new Map(ai.selections.map((selection) => [selection.discoveryId, selection]));
@@ -172,9 +180,9 @@ async function collectIndustry() {
         settings.industry.dailyLimit,
         Math.max(reranked.length, minimumUsefulSet),
       );
-      selected = selectDiverseIndustryDiscoveries(
+      selected = selectWithDiscoveryAllowance(
         [...reranked, ...local.selected],
-        { limit: targetSize },
+        baseline.selected, preferenceState.profile, targetSize,
       ).selected;
       curationMode = ai.provider;
       providerStatuses.push({
@@ -207,7 +215,14 @@ async function collectIndustry() {
     currentSweepOnly: true,
   });
   const { archivedItems, historyItems } = splitIndustryLibrary(saved.archived);
-  return Response.json({ configured: true, checkedAt, items: sortIndustryItems(saved.active, "important"), archivedItems, archiveCount: archivedItems.length, historyItems, historyCount: historyItems.length, errors, sourceStatuses, freshnessHours, discoveredCount: rawItems.length, surfacedLimit: settings.industry.dailyLimit, curationMode, providerStatuses } satisfies LiveFeedResponse);
+  return Response.json({ preferenceSelection, configured: true, checkedAt, items: sortIndustryItems(saved.active, "important"), archivedItems, archiveCount: archivedItems.length, historyItems, historyCount: historyItems.length, errors, sourceStatuses, freshnessHours, discoveredCount: rawItems.length, surfacedLimit: settings.industry.dailyLimit, curationMode, providerStatuses } satisfies LiveFeedResponse);
+}
+
+function withPreferenceStatus(payload: LiveFeedResponse): LiveFeedResponse {
+  const current = readPreferenceState(getDatabase());
+  const applied = payload.preferenceSelection || { revision: 0, enabled: false };
+  return { ...payload, preferenceStatus: { currentRevision: current.revision, enabled: current.profile.enabled,
+    pending: current.profile.enabled !== applied.enabled || (current.profile.enabled && current.revision !== applied.revision) } };
 }
 
 export async function GET(request: Request) {
@@ -221,7 +236,7 @@ export async function GET(request: Request) {
       scope,
     );
     if (cached) {
-      return Response.json(withMonitorState(getDatabase(), cached.payload), {
+      return Response.json(withPreferenceStatus(withMonitorState(getDatabase(), cached.payload)), {
         headers: { "X-Control-Center-Cache": "hit" },
       });
     }
@@ -241,7 +256,7 @@ export async function GET(request: Request) {
         payload,
         payload.checkedAt,
       );
-      return Response.json(withMonitorState(getDatabase(), saved), {
+      return Response.json(withPreferenceStatus(withMonitorState(getDatabase(), saved)), {
         headers: { "X-Control-Center-Cache": "refresh" },
       });
     }

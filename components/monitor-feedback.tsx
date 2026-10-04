@@ -76,7 +76,7 @@ export function MonitorFeedbackHistory({ revision, disabled, change }: { revisio
     if (event.currentTarget.open) setLoading(true);
   }}>
     <summary>Feedback history</summary>
-    <p>Feedback is stored on this computer. It leaves Save, review status and current selection unchanged.</p>
+    <p>Feedback is stored on this computer. It leaves Save and review status unchanged. Repeated patterns can be reviewed in Research preferences; a click alone does not change selection.</p>
     {error && <p role="alert">{error} <button className="button" disabled={disabled || loading} onClick={() => { setLoading(true); void load(); }}>Reload history</button></p>}
     {loading && <p role="status">Loading feedback…</p>}
     {history?.items.length === 0 && <p>No feedback yet. Open Feedback beneath a monitoring update to record your choice.</p>}

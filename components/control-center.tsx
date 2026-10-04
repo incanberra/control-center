@@ -80,6 +80,7 @@ import type { AudienceHistorySeries } from "@/lib/audience-charts";
 import { AI_PROVIDER_LABELS, DEFAULT_LOCAL_AI_URLS, isAiReady } from "@/lib/ai-providers";
 import { sortFeedStories, selectNewsletterTopics, newsletterSourceOptions } from "@/lib/feed-priority";
 import { MonitorView } from "@/components/monitor-view";
+import { ResearchPreferences } from "@/components/research-preferences";
 import { completeTaskItems } from "@/lib/tasks";
 import {
   applyArchiveToPayload,
@@ -94,6 +95,7 @@ type Tab =
   | "audience"
   | "newsletters"
   | "tasks"
+  | "preferences"
   | "settings";
 type SettingsSection =
   | "general"
@@ -3145,7 +3147,7 @@ export function ControlCenter() {
       ) as Tab | null;
       if (
         requested &&
-        [...nav.map((item) => item.id), "settings"].includes(requested)
+        [...nav.map((item) => item.id), "settings", "preferences"].includes(requested)
       )
         setActiveTab(requested);
     });
@@ -3418,7 +3420,7 @@ export function ControlCenter() {
             return (
               <button
                 key={item.id}
-                className={activeTab === item.id ? "active" : ""}
+                className={activeTab === item.id || (activeTab === "preferences" && item.id === "industry") ? "active" : ""}
                 onClick={() => goTo(item.id)}
               >
                 <Icon size={15} />
@@ -3475,8 +3477,10 @@ export function ControlCenter() {
               addReminder(story.title, story.summary, story.url)
             }
             openSettings={() => openSettings("industry")}
+            openPreferences={() => goTo("preferences")}
           />
         )}{" "}
+        {activeTab === "preferences" && <ResearchPreferences backToMonitor={() => goTo("industry")} />}
         {activeTab === "mentions" && (
           <MentionsView
             saveStory={(story) =>

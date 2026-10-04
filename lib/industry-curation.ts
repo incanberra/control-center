@@ -47,6 +47,7 @@ export type CuratedIndustryDiscovery<T extends IndustryDiscoveryLike> = {
   corroboratingSources: string[];
   deferredReason?: "below-threshold" | "source-diversity" | "similar-event" | "daily-limit";
   excludedReason?: string;
+  discoveryAllowance?: boolean;
 };
 
 export type IndustryCurationResult<T extends IndustryDiscoveryLike> = {

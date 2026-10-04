@@ -186,6 +186,8 @@ export type LiveFeedResponse = {
   freshnessHours?: number;
   discoveredCount?: number;
   surfacedLimit?: number;
+  preferenceSelection?: { revision: number; enabled: boolean };
+  preferenceStatus?: { currentRevision: number; enabled: boolean; pending: boolean };
   curationMode?: "local" | AiKeyProvider;
   archivedItems?: LiveStory[];
   archiveCount?: number;

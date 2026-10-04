@@ -21,9 +21,10 @@ function dateLabel(value: string, time = false) {
   }).format(date);
 }
 
-export function MonitorView({ saveStory, openSettings }: {
+export function MonitorView({ saveStory, openSettings, openPreferences }: {
   saveStory: (story: LiveStory) => void;
   openSettings: () => void;
+  openPreferences: () => void;
 }) {
   const [data, setData] = useState<LiveFeedResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -121,7 +122,13 @@ export function MonitorView({ saveStory, openSettings }: {
         <span>Last checked {dateLabel(data.checkedAt, true)}</span>
         <span>{data.errors.length ? "Collection incomplete" : stale ? "Saved results · check for updates" : "Saved collection"}</span>
         <button onClick={openSettings}><Settings2 size={14} /> Sources and topics</button>
+        <button onClick={openPreferences}><Settings2 size={14} /> Research preferences</button>
       </div>
+      {data.preferenceStatus && <p className={styles.preferenceNote}>
+        Research preferences {data.preferenceStatus.enabled ? "enabled" : "off"}{data.preferenceStatus.pending
+          ? " · the saved selection will update at the next scheduled collection or when you refresh sources."
+          : data.preferenceStatus.enabled ? " · applied to this selection." : " · your explicit research settings guide selection."}
+      </p>}
       {!data.configured && <section className="panel empty-state">
         <Globe2 size={28} /><h2>Choose what you follow</h2>
         <p>Add public feeds, websites and topic searches. Useful updates can be saved, and unread items stay available between visits.</p>
