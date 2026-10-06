@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { registerHooks } from "node:module";
-import test from "node:test";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import test, { before, after } from "node:test";
 import type { StoredSettings } from "../lib/server/settings";
 import type { AiKeyProvider } from "../lib/types";
 import { DEFAULT_LOCAL_AI_URLS } from "../lib/ai-providers";
@@ -27,7 +30,7 @@ function settingsFor(provider: AiKeyProvider, model = ""): StoredSettings {
     audience: { accounts: [] },
     ai: {
       provider, model,
-      apiKeys: { openai: "openai-test-key", anthropic: "anthropic-test-key", gemini: "gemini-test-key", xai: "xai-test-key", lmstudio: "", ollama: "" },
+      apiKeys: { openrouter: "openrouter-test-key", openai: "openai-test-key", anthropic: "anthropic-test-key", gemini: "gemini-test-key", xai: "xai-test-key", lmstudio: "", ollama: "" },
       localBaseUrls: { ...DEFAULT_LOCAL_AI_URLS },
     },
     dailyBrief: { sourceLabels: [], lookbackDays: 7, sections: { industry: 5, mentions: 5, newsletters: 5 } },
@@ -36,7 +39,7 @@ function settingsFor(provider: AiKeyProvider, model = ""): StoredSettings {
 
 async function withFetch<T>(fetcher: typeof fetch, run: () => Promise<T>) {
   const original = globalThis.fetch;
-  const environmentNames = ["LM_STUDIO_API_KEY", "LM_API_TOKEN", "OLLAMA_LOCAL_API_KEY"];
+  const environmentNames = ["OPENROUTER_API_KEY", "LM_STUDIO_API_KEY", "LM_API_TOKEN", "OLLAMA_LOCAL_API_KEY"];
   const originalEnvironment = new Map(environmentNames.map((name) => [name, process.env[name]]));
   for (const name of environmentNames) delete process.env[name];
   globalThis.fetch = fetcher;
@@ -48,6 +51,115 @@ async function withFetch<T>(fetcher: typeof fetch, run: () => Promise<T>) {
     }
   }
 }
+
+test("OpenRouter extraction sends only its key to the fixed endpoint with bounded output", async () => {
+  const { runConfiguredAi } = await import("../lib/server/ai");
+  const result = await withFetch((async (url, init) => {
+    assert.equal(String(url), "https://openrouter.ai/api/v1/chat/completions");
+    const headers = new Headers(init?.headers);
+    assert.equal(headers.get("authorization"), "Bearer openrouter-test-key");
+    assert.equal(headers.get("x-goog-api-key"), null);
+    assert.equal(headers.get("x-api-key"), null);
+    assert.equal(init?.redirect, "manual");
+    const body = JSON.parse(String(init?.body));
+    assert.equal(body.model, "google/gemini-2.5-flash-lite");
+    assert.equal(body.max_tokens, 8_000);
+    assert.equal(body.stream, false);
+    assert.equal(body.tools, undefined);
+    return Response.json({ choices: [{ finish_reason: "stop", message: { content: '{"stories":[]}' } }] });
+  }) as typeof fetch, () => runConfiguredAi(settingsFor("openrouter", "google/gemini-2.5-flash-lite"), { prompt: "Extract stories from supplied newsletter evidence", maxOutputTokens: 20_000 }));
+  assert.equal(result.provider, "openrouter");
+  assert.equal(result.text, '{"stories":[]}');
+});
+
+let usageTestDirectory: string;
+const previousUsageDirectory = process.env.CONTROL_CENTER_DATA_DIR;
+before(async () => {
+  usageTestDirectory = await mkdtemp(path.join(os.tmpdir(), "cc-ai-runtime-usage-"));
+  process.env.CONTROL_CENTER_DATA_DIR = usageTestDirectory;
+});
+after(async () => {
+  globalThis.controlCenterDatabase?.close();
+  globalThis.controlCenterDatabase = undefined;
+  if (previousUsageDirectory === undefined) delete process.env.CONTROL_CENTER_DATA_DIR;
+  else process.env.CONTROL_CENTER_DATA_DIR = previousUsageDirectory;
+  assert.ok(path.resolve(usageTestDirectory).startsWith(path.resolve(os.tmpdir()) + path.sep));
+  await rm(usageTestDirectory, { recursive: true, force: true });
+});
+
+test("OpenRouter refuses web search and rejects truncated or HTTP-200 errors without exposing evidence", async () => {
+  const { runConfiguredAi } = await import("../lib/server/ai");
+  let calls = 0;
+  await withFetch((async () => { calls++; return Response.json({}); }) as typeof fetch, async () => {
+    await assert.rejects(runConfiguredAi(settingsFor("openrouter"), { prompt: "Find sources", webSearch: true }), /does not provide live web research/);
+    assert.equal(calls, 0);
+  });
+  for (const payload of [
+    { error: { message: "private newsletter and openrouter-test-key" } },
+    { choices: [{ error: { message: "private newsletter" }, message: { content: "{}" } }] },
+    { choices: [{ finish_reason: "length", message: { content: '{"stories":[]}' } }] },
+  ]) {
+    await withFetch((async () => Response.json(payload)) as typeof fetch, async () => {
+      await assert.rejects(runConfiguredAi(settingsFor("openrouter", "google/gemini-2.5-flash-lite"), { prompt: "Extract stories" }),
+        (error: Error) => /could not complete|incomplete result was not saved/.test(error.message) && !/private newsletter|test-key/.test(error.message));
+    });
+  }
+});
+
+test("OpenRouter records billed tokens before rejecting an incomplete result and tracks task without evidence", async () => {
+  const { runConfiguredAi } = await import("../lib/server/ai");
+  const { getDatabase } = await import("../lib/server/database");
+  const { readAiUsage } = await import("../lib/ai-usage-store");
+  const before = readAiUsage(getDatabase(), 1).requests;
+  await withFetch((async () => Response.json({ id: "gen-cost-test", usage: {
+    prompt_tokens: 500, completion_tokens: 100, cost: 0.002,
+    prompt_tokens_details: { cached_tokens: 100 }, completion_tokens_details: { reasoning_tokens: 20 },
+  }, choices: [{ finish_reason: "length", message: { content: "unfinished private evidence" } }] })) as typeof fetch, async () => {
+    await assert.rejects(runConfiguredAi(settingsFor("openrouter", "test/model"), { prompt: "private evidence", task: "newsletter extraction" }), /incomplete result/);
+  });
+  const report = readAiUsage(getDatabase(), 1);
+  assert.equal(report.requests, before + 1);
+  const billed = report.recent.find((row) => row.model === "test/model")!;
+  assert.equal(billed.inputTokens, 500);
+  assert.equal(billed.outputTokens, 100);
+  assert.equal(billed.costUsd, 0.002);
+  assert.equal(billed.status, "incomplete");
+  assert.equal(billed.task, "newsletter extraction");
+  assert.doesNotMatch(JSON.stringify(report), /private evidence|openrouter-test-key/);
+});
+
+test("OpenRouter settings persist privately and preserve existing Gmail tokens and other provider keys", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "control-center-openrouter-settings-"));
+  const previousDirectory = process.env.CONTROL_CENTER_DATA_DIR;
+  process.env.CONTROL_CENTER_DATA_DIR = directory;
+  try {
+    const settings = await import("../lib/server/settings");
+    const fixture = settingsFor("gemini");
+    fixture.newsletters.refreshToken = "test-gmail-refresh-token";
+    fixture.newsletters.connectedEmail = "newsletter@example.com";
+    await writeFile(path.join(directory, "settings.json"), JSON.stringify(fixture));
+    const publicSettings = settings.toPublicSettings(await settings.readSettings());
+    const saved = await settings.updateSettings({ ...publicSettings, ai: { provider: "openrouter", model: "google/gemini-2.5-flash-lite", apiKeys: { openrouter: "new-router-key" } } });
+    assert.equal(saved.ai.provider, "openrouter");
+    assert.equal(saved.ai.keySet.openrouter, true);
+    assert.equal(saved.ai.keySource.openrouter, "settings");
+    assert.equal(saved.newsletters.connectedEmail, "newsletter@example.com");
+    assert.ok(!/new-router-key|test-gmail-refresh-token|gemini-test-key/.test(JSON.stringify(saved)));
+    const stored = JSON.parse(await readFile(path.join(directory, "settings.json"), "utf8"));
+    assert.equal(stored.ai.apiKeys.openrouter, "new-router-key");
+    assert.equal(stored.ai.apiKeys.gemini, "gemini-test-key");
+    assert.equal(stored.newsletters.refreshToken, "test-gmail-refresh-token");
+    const kept = await settings.updateSettings({ ...saved, ai: { provider: "openrouter", model: saved.ai.model } });
+    assert.equal(kept.ai.keySet.openrouter, true);
+    await settings.updateSettings({ ...kept, ai: { provider: "none", model: "", clearKeys: ["openrouter"] } });
+    assert.equal((await settings.readSettings()).ai.apiKeys.openrouter, "");
+  } finally {
+    if (previousDirectory === undefined) delete process.env.CONTROL_CENTER_DATA_DIR;
+    else process.env.CONTROL_CENTER_DATA_DIR = previousDirectory;
+    assert.ok(path.resolve(directory).startsWith(path.resolve(os.tmpdir()) + path.sep));
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test("Grok uses authenticated Responses with native web search, not a fabricated lookup", async () => {
   const { runConfiguredAi } = await import("../lib/server/ai");

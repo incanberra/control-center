@@ -6,10 +6,10 @@ Every fresh install starts empty. There are no built-in names, companies, websit
 
 ## Install and open
 
-Requirements: [Node.js 24.19 or newer](https://nodejs.org/en/download), npm, and a modern desktop browser.
+Requirements: [Node.js 24.13 or newer](https://nodejs.org/en/download), npm, and a modern desktop browser.
 
 ```bash
-git clone https://github.com/mreflow/control-center.git
+git clone https://github.com/incanberra/control-center.git
 cd control-center
 npm run launch
 ```
@@ -40,6 +40,14 @@ The Today page shows the four live areas and links directly to the right Setting
 
 Collectors run shortly after startup, every 15 minutes while the app remains open, and when **Refresh** is pressed. Industry, Mentions, and Newsletters open from their last saved collector snapshot, so moving between tabs does not repeat public web or Gmail collection.
 
+Open **Collection and scanners** from Today, Monitor or the top configuration indicator. It shows the next scheduled check, last full success and last attempt per area, coverage/provider errors, newsletter backlog and seven-day recorded OpenRouter costs. Older snapshots are labeled separately; a failed or partial run does not advance the last full-success time. Status reads make no source, Gmail or AI calls. You can pause automatic collection while retaining manual Refresh sources. A running collection finishes before the new control takes effect. The app must remain running; closing it or putting the computer to sleep stops collection. This does not install an unattended service.
+
+The same screen reads completed **Geoeconomic Daily Intelligence Brief** and **Think Tank Scanner** outputs from their local folders. View the dated brief, its coverage window, edition and coverage notes, then choose **Import this report**. The geoeconomics adapter uses the saved Markdown, read-only story database and matching collection evidence; the Think Tank adapter uses the run manifest and saved JSON/Markdown report. Neither starts a scanner, sends email, fetches source pages or repeats AI summaries. Folder paths can be changed explicitly. Reports that are missing, malformed, still running, outside their configured folder or ambiguous are rejected while prior imports remain available.
+
+Imports retain producer/run/event identities, source URLs, publication dates where known, topics and the existing summaries. Canonical source URLs and stable producer identities prevent repeated imports from duplicating stories. Saved, reviewed, archived and feedback choices are preserved. Current morning stories join Monitor's configured reading target; overflow, older and undated evidence stays in History and Unreviewed. Scanner provenance is visible on each Monitor story. Ad-hoc reports are separate and cannot become the morning edition. A later partial run cannot replace a retained complete morning edition; a partial report can be viewed and imported with its coverage warning, and is used as the current edition only when no complete morning report has been imported for that producer. Empty complete runs are recorded without deleting previous evidence.
+
+**Download import file** in the viewer exports the version-1 scanner interchange contract. The upload control accepts these JSON files up to 4 MB. Contract fields are documented in `docs/SCANNER_INTERCHANGE.md`. Optional **Import newly saved scanner reports after scheduled collection** starts off; once enabled, it reads saved outputs after the existing 15-minute collection cycle. It never runs the scanners and pauses with automatic collection. Scanner costs remain separate from this app's OpenRouter ledger.
+
 ## Today and the daily brief
 
 The daily brief is a quick snapshot of the saved reading queues, not a separate collection job. It shows the highest-priority active stories from each enabled tab, five per section by default. Choose **Customize** on Today or **Settings → Daily brief** to change those counts. Archived and expired stories are excluded; opening Today does not make additional AI, web, or Gmail calls. Each section links to the full tab and shows when that source was last checked.
@@ -56,7 +64,21 @@ Each configured URL is treated independently and can belong to any niche.
 
 A blocked homepage does not stop feed or sitemap discovery. Raw discoveries are stored separately from the reading queue. Canonical URL/title deduplication, watched-source priority, recency, configured topics and exclusions, material-change signals, event similarity, and source diversity select at most the configured daily target (30 by default). This keeps hundreds of broad discoveries available to the collector without presenting hundreds of cards as equally important.
 
-Active Industry cards are limited to items published or newly discovered in the last 24 hours; older surfaced items remain under **History**. **Archived** contains only items a user explicitly archived. Undated feed entries establish a baseline instead of being presented as fresh news. Topic phrases add broader Google News discovery, while watched-site updates remain prioritized independently. A selected AI provider can rerank the bounded candidate set; failures automatically fall back to the local importance model.
+The **Monitor** tab provides **Latest**, **Unreviewed**, **Saved**, **History** and **Archived** views. Latest uses the discovery window selected in Settings (1, 3 or 7 days; 1 by default). Unreviewed retains surfaced items until explicitly reviewed or archived, including older history from before this upgrade. Opening a source does not mark it reviewed. Save is independent of review and archive status; saved evidence stays available regardless of age. Both choices survive refreshes, app restarts and backups. **Mark these N reviewed** changes only the currently displayed, filtered batch; **Mark unread** reverses an individual review.
+
+Open **Feedback** beneath a Monitor update to choose **Useful**, **Too routine**, **Off-topic** or **Already knew**, with an optional reason. The **Feedback history** panel records each change, its original story/source/topic context and any undo. Changing a reason and choosing an option saves a new revision; undo restores the prior choice, or removes the current choice if there was none before it. Feedback survives recollection, restarts and backups, independently of Save, review and Archive. Feedback actions and history reads make no AI calls and never change ranking on their own.
+
+Open **Research preferences** from Monitor to review a visible, editable profile. Start with about 20–30 real feedback examples. Broad proposals require at least three supporting distinct headlines and 75% agreement among matching examples; an **Already knew** example can propose a rule for repeated coverage of that particular development. Proposals use literal topic phrases and listed editorial signals, not semantic interpretation of your reasons or model training. Add proposals to your draft or write your own rules, separating relevance, novelty and significance. The profile supports up to 12 rules and starts **off**.
+
+**Compare these rules** shows the same stored candidate pool with and without the draft rules. It excludes archived and explicitly excluded stories, changes no queues, and makes no collection or AI calls. This local ranking preview is not a prediction of the AI's exact choices. Enabling a profile, or changing its active rules, requires a comparison with available candidates in the last 24 hours under the current source/topic settings. Editing an active draft requires another comparison before saving. Drafts do not affect collection.
+
+When enabled, preferences take effect at the next scheduled collection or **Refresh sources**. They add bounded soft ranking weights, preserve substantive new evidence, and reserve roughly one fifth of the reading target for important coverage outside matched rules when available. Normal Monitor AI selection receives only the compact approved rules, using the existing provider and model; full feedback history and reasons are not sent. **Undo latest change** restores the previous profile, including its on/off state. **Reset preferences** turns the profile off and clears its rules while retaining feedback. These preferences apply to Monitor; Newsletter selection remains separate.
+
+Settings offers Australian, US and UK English-language Google News editions, up to 24 topic phrases, and reading targets from 10 to 50 items per collection. New and legacy settings without an edition use Australia. Older configurations exceeding 24 phrases display a coverage warning until shortened. Longer windows recover available source material, not guaranteed complete coverage. Undated feed entries establish a baseline instead of being presented as fresh news. Watched-site updates remain prioritized independently. A selected AI provider can rerank the bounded candidate set; failures automatically fall back to the local importance model. Multiple sources are described as coverage, not independent corroboration.
+
+Monitor reads saved collection results every minute. This does not trigger web or AI collection; the existing server scheduler and **Refresh sources** control collection. Other legacy tabs retain their existing refresh behaviour. Source failures are visible and the last collection time is shown in Australia/Sydney time. The app must be running to collect.
+
+This fork's first research-workspace change is persistent monitoring. The reusable-work catalogue, topic workspaces and existing geoeconomics-brief import are subsequent changes; see [docs/RESEARCH_WORKSPACE.md](docs/RESEARCH_WORKSPACE.md).
 
 ## Mentions
 
@@ -99,7 +121,9 @@ The Audience page includes platform-colored account cards, a platform mix, and i
 
 No AI key is required for installation or for Industry, news Mention discovery, sitemap, RSS, Audience, Task, Reminder, or the daily snapshot features. **Newsletter intelligence requires a configured AI model**, either a cloud provider with a key or a running local model.
 
-Under **Settings → AI curation**, choose **OpenAI**, **Anthropic**, **Gemini**, **Grok (xAI)**, **LM Studio**, or **Ollama**. Keep **Default** selected for an automatic model choice or choose a model returned by that provider. Cloud lists use the selected provider's key. Local lists show only currently loaded, supported text-generation models, not every model available to download. **Reload models** updates the list without saving changes or starting a collector.
+Under **Settings → AI curation**, choose **OpenRouter**, **OpenAI**, **Anthropic**, **Gemini**, **Grok (xAI)**, **LM Studio**, or **Ollama**. Keep **Default** selected for an automatic model choice or choose a model returned by that provider. Cloud lists use the selected provider's key. Local lists show only currently loaded, supported text-generation models, not every model available to download. **Reload models** updates the list without saving changes or starting a collector.
+
+**OpenRouter** uses its own API key, separately from any ChatGPT or Gemini chat subscription. Model discovery validates the key and loads a bounded, paginated text-model catalogue without making inference calls. Listed input/output token prices appear in the model menu where available. Default is the fixed `google/gemini-2.5-flash-lite` model, never an arbitrary catalogue entry or automatic router. Set an OpenRouter key spending limit to control the app's allowance. This adapter extracts and ranks collected evidence; it does not enable OpenRouter web-search plugins. Public news collectors continue to run. Invalid keys, exhausted credits, rate limits and incomplete answers remain visible; raw provider error bodies are never displayed. OpenRouter routes evidence to the selected model's serving provider under your OpenRouter account settings.
 
 The selected provider is used for bounded background jobs:
 
@@ -108,7 +132,13 @@ The selected provider is used for bounded background jobs:
 - summaries and priority ranking for already-verified Mention pages;
 - newsletter story extraction, priority ranking, and cross-newsletter deduplication, using only the separately connected mailbox's matching issues.
 
-Keys can instead be supplied as `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or `XAI_API_KEY` in `.env.local`. Environment keys are still inert until the matching provider is selected in Settings. Cloud calls can incur usage charges. Saved keys remain in the local server-side settings file, never return through the Settings API, and are not sent to any unselected provider.
+Keys can instead be supplied as `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or `XAI_API_KEY` in `.env.local`. Environment keys are still inert until the matching provider is selected in Settings. Cloud calls can incur usage charges. Saved keys remain in the local server-side settings file, never return through the Settings API, and are not sent to any unselected provider.
+
+### OpenRouter usage and costs
+
+**Settings → AI curation → Usage & costs** shows this app's OpenRouter input/output tokens, reported costs, model totals and recent tasks over 24 hours, 7 days or 30 days. Recording starts with this feature; historical requests from before installation are not reconstructed. Each outbound inference attempt gets a durable local ledger entry. Charged usage in incomplete responses is retained, and requests lacking provider accounting are marked unknown rather than free. Reasoning and cached tokens are subsets of the reported output/input counts, not extra tokens added to the total. The ledger stores accounting fields, not prompts, email bodies or API keys.
+
+**Check OpenRouter balance** reads key usage/limits and account credits without running inference. These account totals can include scanners or other applications using the same key and are kept separate from this app's ledger. The workload calculator uses the selected model's currently listed input/output rates. Amounts are US dollars; estimates can differ from bills because of caching, reasoning, price changes and credit-purchase fees. The [OpenRouter activity page](https://openrouter.ai/activity) remains the authoritative account history.
 
 ### Local models
 
@@ -127,6 +157,8 @@ Completing a repeating task records a dated, immutable occurrence in Completed a
 ## Newsletter Gmail
 
 The newsletter mailbox can be completely separate from any Gmail account used elsewhere.
+
+When connecting, approve the Gmail email-reading permission on Google's consent screen. Google can complete sign-in even when that permission is declined; Control Center checks the granted scopes before saving a new connection. If an older connection reports insufficient permissions, use **Settings → Newsletters → Save & choose Gmail account**, select the newsletter mailbox again, tick the email-reading permission, then refresh intelligence. Saved stories and OAuth client credentials are retained.
 
 The Newsletters page is an intelligence queue rather than an inbox mirror. On a refresh, Control Center reads previously unseen matching Gmail issues and asks the selected AI provider to extract substantive news—not every hyperlink. Navigation, polls, ads, stock tickers, author profiles, and housekeeping are excluded. Safe public tracking redirects, canonical URLs, headline matching, and AI event consolidation group repeat coverage into one story. Each topic shows how many issues and newsletters covered it, links to the original sources, and a Gmail evidence link. Persistent topic aliases keep archive state stable when later newsletters repeat a story.
 
@@ -161,7 +193,7 @@ Existing installations that already contain `./.control-center` continue using t
 Stored files include:
 
 - `settings.json`: configuration, OAuth tokens, and any saved AI/provider keys, owner-readable on POSIX systems;
-- `control-center.sqlite`: raw Industry discoveries, saved collector snapshots, surfaced content, extracted newsletter issue/link metadata, archive state, reminders, and tasks;
+- `control-center.sqlite`: raw Industry discoveries, saved collector snapshots, surfaced content, extracted newsletter issue/link metadata, archive and reading state, editorial feedback history, research preference revisions and comparisons, AI usage, reminders, and tasks;
 - snapshot JSON files: sitemap and audience baselines.
 
 Secrets never return through the Settings API. They remain local, but they are not encrypted at rest. Protect the operating-system account and any backups.
@@ -172,13 +204,23 @@ Secrets never return through the Settings API. They remain local, but they are n
 npm run backup
 ```
 
-This creates a consistent SQLite backup plus settings and snapshot files under `~/Documents/Control Center Backups/<timestamp>`. It is a private full backup and may contain OAuth tokens or AI provider keys.
+This creates a consistent SQLite backup plus settings, snapshot files and the application's `.env.local` (when present) under `~/Documents/Control Center Backups/<timestamp>`. Each backup includes a checksum manifest and recovery instructions. Before reporting success, it checks every copied file and restores a separate temporary database copy, verifying integrity, relationships, schema and table row counts. The live database is not changed. Existing backup artifacts are never overwritten, and the live data directory cannot be used as a destination. It is a private full backup and may contain OAuth tokens or AI provider keys; keep it outside your Git repository.
 
 To choose another destination:
 
 ```bash
 npm run backup -- --to=/absolute/path/to/backup-folder
 ```
+
+To recheck a backup made with the new manifest:
+
+```bash
+npm run backup:verify -- --from=/absolute/path/to/backup-folder
+```
+
+For recovery, stop the app and preserve the current data. Copy the database, settings and snapshot files into a separate recovery directory. If needed, restore `.env.local` into the application folder, changing `CONTROL_CENTER_DATA_DIR` to point to that recovery directory. Use an app version that supports the backup's schema, then check saved evidence, tasks and settings before resuming work. Credentials supplied only through the operating-system environment must be restored separately. Older backups without a manifest remain recoverable but are not supported by `backup:verify`.
+
+Make a new backup before upgrades and after valuable research sessions. GitHub stores committed application code, not the local research database or private configuration. A backup on this computer protects against application/data errors; keep a protected copy on another device or backup service for recovery after loss of the computer.
 
 If startup safely stops on a local-data error, run `npm run doctor`. The app fails closed: it will not render editable empty defaults or overwrite settings, tasks, or reminders after a failed initial read.
 

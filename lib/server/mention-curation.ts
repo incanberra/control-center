@@ -48,6 +48,7 @@ export async function curateMentionsWithAi(
   const pending = evidence.filter(({ key }) => !cache.has(key)).slice(0, MAX_NEW_CURATIONS);
   if (pending.length) {
     const batch = runConfiguredAi(settings, {
+      task: "mention ranking",
       maxOutputTokens: 6_000,
       prompt: [
         "Summarize and prioritize already-verified public mentions for the person or organization tracking them.",

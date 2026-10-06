@@ -32,6 +32,7 @@ import {
 import { isValidPublicProfileUrl } from "@/lib/public-metrics";
 import { AI_KEY_PROVIDERS, DEFAULT_LOCAL_AI_URLS, aiEnvironmentKey, cleanAiModelOverride, isAiKeyProvider, isLocalAiProvider, isValidAiModelId, localAiBaseUrl } from "@/lib/ai-providers";
 import { defaultBriefSections, normalizeBriefSections } from "@/lib/daily-brief-snapshot";
+import { cleanIndustryTopics, industryDiscoveryOptions, MAX_INDUSTRY_TOPICS } from "@/lib/industry-discovery";
 
 type StoredAudienceAccount = Omit<
   AudienceAccountInput,
@@ -71,6 +72,8 @@ const defaults: StoredSettings = {
     description: "",
     excludedTerms: [],
     dailyLimit: 30,
+    country: "AU",
+    lookbackDays: 1,
   },
   mentions: {
     terms: [],
@@ -93,7 +96,7 @@ const defaults: StoredSettings = {
   ai: {
     provider: "none",
     model: "",
-    apiKeys: { openai: "", anthropic: "", gemini: "", xai: "", lmstudio: "", ollama: "" },
+    apiKeys: { openrouter: "", openai: "", anthropic: "", gemini: "", xai: "", lmstudio: "", ollama: "" },
     localBaseUrls: { ...DEFAULT_LOCAL_AI_URLS },
   },
   dailyBrief: { sourceLabels: [], lookbackDays: 7, sections: defaultBriefSections },
@@ -250,6 +253,7 @@ export function toPublicSettings(settings: StoredSettings): PublicSettings {
       model: settings.ai.model,
       localBaseUrls: { ...DEFAULT_LOCAL_AI_URLS, ...settings.ai.localBaseUrls },
       keySet: {
+        openrouter: Boolean(configuredAiApiKey(settings, "openrouter")),
         openai: Boolean(configuredAiApiKey(settings, "openai")),
         anthropic: Boolean(configuredAiApiKey(settings, "anthropic")),
         gemini: Boolean(configuredAiApiKey(settings, "gemini")),
@@ -258,6 +262,7 @@ export function toPublicSettings(settings: StoredSettings): PublicSettings {
         ollama: Boolean(configuredAiApiKey(settings, "ollama")),
       },
       keySource: {
+        openrouter: aiKeySource("openrouter"),
         openai: aiKeySource("openai"),
         anthropic: aiKeySource("anthropic"),
         gemini: aiKeySource("gemini"),
@@ -414,6 +419,9 @@ export async function updateSettings(update: SettingsUpdate) {
       MAX_MENTION_CONTEXT_VALUES,
     );
     const googleClientId = update.newsletters.googleClientId.trim();
+    const industryKeywords = cleanIndustryTopics(update.industry.keywords);
+    if (industryKeywords.length > MAX_INDUSTRY_TOPICS)
+      throw new Error(`Use at most ${MAX_INDUSTRY_TOPICS} topic phrases so every configured phrase can be searched.`);
     if (googleClientId && !isGoogleOAuthClientId(googleClientId))
       throw new Error(GOOGLE_OAUTH_CLIENT_ID_ERROR);
     const next: StoredSettings = {
@@ -423,7 +431,8 @@ export async function updateSettings(update: SettingsUpdate) {
       },
       industry: {
         sources: cleanIndustrySources(update.industry.sources),
-        keywords: cleanList(update.industry.keywords),
+        keywords: industryKeywords,
+        ...industryDiscoveryOptions({ ...current.industry, ...update.industry }),
         description: (update.industry.description ?? "").trim().slice(0, 1_000),
         excludedTerms: cleanList(update.industry.excludedTerms ?? []),
         dailyLimit: Math.min(

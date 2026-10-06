@@ -28,10 +28,17 @@ export async function aiProviderJson(
     });
     if (!response.ok || response.redirected) {
       await response.body?.cancel().catch(() => undefined);
+      const openRouterError = provider === "openrouter" && !response.redirected
+        ? ({
+          401: "OpenRouter rejected the API key. Check the OpenRouter key in Settings.",
+          402: "OpenRouter credits or the key's spending allowance are exhausted. Check your balance and key limit.",
+          429: "OpenRouter is rate limiting requests. Wait briefly, then retry.",
+        } as Record<number, string>)[response.status]
+        : undefined;
       throw new AiProviderRequestError(
         response.status >= 300 && response.status < 400 || response.redirected
           ? `${label} tried to redirect the request. Redirects are blocked to protect your key and data.`
-          : `${label} returned HTTP ${response.status}. Check the selected provider, its key, and server access.`,
+          : openRouterError || `${label} returned HTTP ${response.status}. Check the selected provider, its key, and server access.`,
         response.status,
       );
     }

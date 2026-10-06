@@ -40,6 +40,7 @@ import {
   writeCollectorSnapshot,
 } from "@/lib/collector-cache";
 
+import { trackCollection } from "@/lib/server/collection-tracking";
 export const runtime = "nodejs";
 
 const MENTION_WINDOW_DAYS = 7;
@@ -199,7 +200,7 @@ async function collectMentions(
       provider: "Broad web research",
       state: "disabled",
       message: configuredAiReady(settings) && !aiSupportsWebSearch(settings.ai.provider)
-        ? "This local provider summarizes verified mentions but cannot search the web; Google News and Bing News remain active."
+        ? "This provider summarizes verified mentions but has no built-in web search in this app; Google News and Bing News remain active."
         : "AI web research is off or no key is configured; Google News and Bing News remain active.",
     };
   } else {
@@ -492,7 +493,7 @@ export async function GET(request: Request) {
       });
     }
   }
-  const response = await collectMentions(settings);
+  const response = await trackCollection("mentions", () => collectMentions(settings));
   if (response.ok) {
     const payload = await response.clone().json() as LiveFeedResponse;
     const saved = writeCollectorSnapshot(

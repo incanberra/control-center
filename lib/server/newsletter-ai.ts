@@ -20,6 +20,7 @@ export async function extractNewsletterStoriesWithAi(
   const prepared = prepareNewsletterForAi(issue);
   if (!prepared.bodyText || !prepared.links.length) return [];
   const response = await runConfiguredAi(settings, {
+    task: "newsletter extraction",
     maxOutputTokens: 5_000,
     prompt: [
       "Extract the actual news stories from this newsletter issue, not a list of hyperlinks.",
@@ -48,6 +49,7 @@ export async function consolidateNewsletterTopicsWithAi(
   if (topics.length < 2) return topics;
   const candidates = topics.slice(0, 120);
   const response = await runConfiguredAi(settings, {
+    task: "newsletter deduplication",
     maxOutputTokens: 4_000,
     prompt: [
       "Deduplicate news stories extracted from multiple newsletters.",
@@ -84,6 +86,7 @@ export async function prioritizeSavedNewsletterTopicsWithAi(
     topic.workflow?.archiveReason !== "user").slice(0, 60);
   if (!candidates.length) return topics;
   const response = await runConfiguredAi(settings, {
+    task: "newsletter ranking",
     maxOutputTokens: 5_000,
     prompt: [
       "Prioritize already-extracted newsletter news for a reader's daily briefing.",

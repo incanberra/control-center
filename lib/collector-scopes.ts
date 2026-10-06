@@ -1,10 +1,17 @@
 import { collectionScope } from "./collection-scope";
 import type { PublicSettings } from "./types";
 import { isLocalAiProvider } from "./ai-providers";
+import { industryDiscoveryOptions } from "./industry-discovery";
 
 type FeedSettings = Pick<PublicSettings, "industry" | "mentions"> & {
   ai: Pick<PublicSettings["ai"], "provider" | "model"> & Partial<Pick<PublicSettings["ai"], "localBaseUrls">>;
 };
+
+export function industryDiscoveryScopes(settings: Pick<PublicSettings, "industry">) {
+  const discovery = industryDiscoveryOptions(settings.industry);
+  return [...settings.industry.sources.map((source) => collectionScope("industry-source-v2", [source.id, source.url])),
+    ...(settings.industry.keywords.length ? [collectionScope("industry-topics-v3", [...settings.industry.keywords, discovery.country, String(discovery.lookbackDays)])] : [])];
+}
 
 export function industryCacheScope(settings: FeedSettings) {
   return collectionScope("industry-response-v1", [
@@ -13,6 +20,8 @@ export function industryCacheScope(settings: FeedSettings) {
     ...settings.industry.keywords.map((keyword) => `topic:${keyword}`),
     ...settings.industry.excludedTerms.map((term) => `exclude:${term}`),
     `limit:${settings.industry.dailyLimit}`,
+    `country:${settings.industry.country ?? "AU"}`,
+    `window:${settings.industry.lookbackDays ?? 1}`,
     `ai:${settings.ai.provider}:${settings.ai.model}`,
     ...(isLocalAiProvider(settings.ai.provider) ? [settings.ai.localBaseUrls?.[settings.ai.provider] || ""] : []),
   ]);

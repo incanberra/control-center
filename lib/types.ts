@@ -4,7 +4,7 @@ export type IndustrySource = {
   url: string;
 };
 
-export type AiProvider = "none" | "openai" | "anthropic" | "gemini" | "xai" | "lmstudio" | "ollama";
+export type AiProvider = "none" | "openrouter" | "openai" | "anthropic" | "gemini" | "xai" | "lmstudio" | "ollama";
 export type AiKeyProvider = Exclude<AiProvider, "none">;
 export type LocalAiProvider = Extract<AiKeyProvider, "lmstudio" | "ollama">;
 export type AiModelOption = {
@@ -12,6 +12,8 @@ export type AiModelOption = {
   label: string;
   /** Actual loaded capacity, never the model's theoretical maximum. */
   contextLength?: number;
+  inputPricePerMillionUsd?: number;
+  outputPricePerMillionUsd?: number;
 };
 export type AiModelsResponse = {
   provider: AiProvider;
@@ -54,6 +56,8 @@ export type PublicSettings = {
     description: string;
     excludedTerms: string[];
     dailyLimit: number;
+    country?: "AU" | "US" | "GB";
+    lookbackDays?: 1 | 3 | 7;
   };
   mentions: {
     terms: string[];
@@ -116,6 +120,23 @@ export type ContentWorkflow = {
   restoreEligible: boolean;
 };
 
+export type StoryReview = { reviewedAt: string | null; savedAt: string | null };
+
+export type FeedbackChoice = "useful" | "too-routine" | "off-topic" | "already-knew";
+export type StoryFeedback = {
+  id: number;
+  choice: FeedbackChoice;
+  reason: string;
+  createdAt: string;
+};
+export type FeedbackHistoryEntry = StoryFeedback & {
+  storyId: string;
+  context: { title: string; source: string; url: string; publishedAt: string; summary: string; topics: string[] };
+  undoneAt: string | null;
+  current: boolean;
+};
+export type FeedbackHistoryResponse = { items: FeedbackHistoryEntry[]; nextBefore: number | null };
+
 export type LiveStory = {
   id: string;
   title: string;
@@ -135,6 +156,9 @@ export type LiveStory = {
   curationMode?: "local" | AiKeyProvider;
   collectionScope?: string;
   workflow?: ContentWorkflow;
+  review?: StoryReview;
+  feedback?: StoryFeedback | null;
+  scannerSources?: import("./scanner-contract").ScannerProvenance[];
 };
 
 export type IndustrySourceStatus = {
@@ -163,6 +187,8 @@ export type LiveFeedResponse = {
   freshnessHours?: number;
   discoveredCount?: number;
   surfacedLimit?: number;
+  preferenceSelection?: { revision: number; enabled: boolean };
+  preferenceStatus?: { currentRevision: number; enabled: boolean; pending: boolean };
   curationMode?: "local" | AiKeyProvider;
   archivedItems?: LiveStory[];
   archiveCount?: number;

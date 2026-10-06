@@ -3,10 +3,11 @@
 import { useEffect, useId, useState } from "react";
 import { Cpu, Globe2, KeyRound, RefreshCw, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
 import type { AiKeyProvider, AiModelsResponse, AiProvider, PublicSettings, SettingsUpdate } from "@/lib/types";
-import { AI_KEY_PROVIDERS, AI_PROVIDER_LABELS, DEFAULT_AI_MODELS, DEFAULT_LOCAL_AI_URLS, isLocalAiProvider, localAiBaseUrl } from "@/lib/ai-providers";
+import { AI_KEY_PROVIDERS, AI_PROVIDER_LABELS, DEFAULT_AI_MODELS, DEFAULT_LOCAL_AI_URLS, aiSupportsWebSearch, isLocalAiProvider, localAiBaseUrl } from "@/lib/ai-providers";
 import { modelOverrideAfterProviderChange } from "@/lib/ai-settings";
 import { SettingsInput } from "@/components/settings-input";
 import styles from "./ai-provider-settings.module.css";
+import { AiUsagePanel } from "./ai-usage-panel";
 
 export type AiSettingsDraft = NonNullable<SettingsUpdate["ai"]> & Pick<PublicSettings["ai"], "keySet" | "keySource">;
 
@@ -94,8 +95,8 @@ export function AiProviderSettings({ value, onChange }: {
       <div className={`${styles.modeCard} ${local ? styles.local : ""}`}>
         {local ? <Cpu size={23} /> : <Globe2 size={23} />}
         <div>
-          <b>{local ? "Local curation, your model" : "Cloud curation + public-web research"}</b>
-          <p>{local ? "No paid API key required. Keep a text model loaded with enough context for the news being processed. The app checks its reported capacity and pauses oversized requests instead of cutting evidence or increasing your memory allocation. Built-in collectors find sources; local models summarize and rank them, without live web research." : "Cloud models can curate collected stories and research public mentions. Usage is billed by your provider; an API key is separate from a chat subscription."}</p>
+          <b>{local ? "Local curation, your model" : aiSupportsWebSearch(provider) ? "Cloud curation + public-web research" : "Curation through OpenRouter"}</b>
+          <p>{local ? "No paid API key required. Keep a text model loaded with enough context for the news being processed. The app checks its reported capacity and pauses oversized requests instead of cutting evidence or increasing your memory allocation. Built-in collectors find sources; local models summarize and rank them, without live web research." : provider === "openrouter" ? "Use your OpenRouter account to extract newsletter stories and rank collected updates. Default uses Gemini 2.5 Flash Lite. Model options show listed input/output token rates where available. OpenRouter bills usage separately from chat subscriptions; set a spending limit on your key. Public-source collectors continue to find stories." : "Cloud models can curate collected stories and research public mentions. Usage is billed by your provider; an API key is separate from a chat subscription."}</p>
         </div>
       </div>
 
@@ -130,5 +131,6 @@ export function AiProviderSettings({ value, onChange }: {
       <ShieldCheck size={17} />
       <p>Saved keys stay server-side and are never sent back to your browser. Newsletter text, with email addresses and subscriber tracking links masked, goes only to your selected provider. Tasks, reminders, and other private connector content are not sent. {local ? "Local endpoints are restricted to this computer; disable LM Link, remote forwarding, or other proxy features in your model app if you want processing to stay on this computer. This app does not download or load models for you." : "Background processing pauses on provider failure, while saved stories remain available."}</p>
     </div>
+    <AiUsagePanel model={provider === "openrouter" ? models.find((model) => model.id === (value.model || defaultModel)) : undefined} />
   </div>;
 }

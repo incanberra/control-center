@@ -1,0 +1,30 @@
+.monitor { min-width: 0; }
+.preferenceNote { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 0 0 18px; }
+.status, .queueNote { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; }
+.status { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+.status button { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; color: inherit; cursor: pointer; }
+.toolbar { flex-wrap: wrap; gap: 12px; }
+.queueNote { margin: 12px 0 18px; }
+.queueNote p { font-size: 13px; line-height: 1.6; max-width: 720px; color: var(--muted); }
+.health { margin: 12px 0 20px; }
+.health summary { cursor: pointer; font-size: 13px; padding: 10px 0; }
+.footer { justify-content: flex-start !important; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px !important; }
+.actions button, .actions a { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto !important; height: auto !important; min-height: 34px; padding: 7px 10px !important; border-radius: 7px !important; font-size: 12px; }
+.actions button[aria-pressed="true"] { background: var(--teal-soft); color: var(--teal); }
+.actions button:disabled { opacity: .5; cursor: wait; }
+.feedback { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.feedback summary, .feedbackHistory summary { cursor: pointer; font-size: 13px; }
+.feedback summary { display: flex; align-items: center; gap: 6px; width: fit-content; }
+.feedbackEditor { margin-top: 12px; }
+.feedbackEditor label { display: grid; gap: 6px; font-size: 12px; color: var(--muted); }
+.feedbackEditor textarea { width: 100%; max-width: 680px; padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--card); color: var(--ink); font: inherit; resize: vertical; }
+.feedbackChoices { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.feedbackChoices button[aria-pressed="true"] { background: var(--teal-soft); color: var(--teal); }
+.feedbackEditor p, .feedbackHistory p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.feedbackHistory { margin: 12px 0 20px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; }
+.feedbackHistory ol { list-style: none; padding: 0; margin: 12px 0; }
+.feedbackHistory li { border-top: 1px solid var(--line); padding: 12px 0; }
+.historyHeading { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 13px; }
+.historyHeading span { color: var(--muted); font-size: 12px; }
+@media (max-width: 720px) { .status { align-items: flex-start; flex-direction: column; } .actions { gap: 6px !important; } }
