@@ -12,6 +12,7 @@ import { rankWithPreferences, selectWithDiscoveryAllowance } from "@/lib/prefere
 import { readPreferenceState } from "@/lib/preference-store";
 import { compactPreferenceProfile } from "@/lib/research-preferences";
 import { withoutArchivedDiscoveries } from "@/lib/server/preference-comparison";
+import { trackCollection } from "@/lib/server/collection-tracking";
 import { listIndustryDiscoveries, pruneIndustryDiscoveries, upsertIndustryDiscoveries } from "@/lib/industry-store";
 import { curateIndustryWithAi } from "@/lib/server/industry-ai";
 import { withMonitorState } from "@/lib/monitor-store";
@@ -246,7 +247,7 @@ export async function GET(request: Request) {
   globalThis.controlCenterIndustryQueue = new Promise<void>((resolve) => { release = resolve; });
   await previous;
   try {
-    const response = await collectIndustry();
+    const response = await trackCollection("industry", collectIndustry);
     if (response.ok) {
       const payload = await response.clone().json() as LiveFeedResponse;
       const saved = writeCollectorSnapshot(

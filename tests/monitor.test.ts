@@ -128,7 +128,7 @@ test("schema 6 upgrades preserve evidence, make a recovery copy and persist API 
     const { getDatabase } = await import("../lib/server/database");
     const { PATCH } = await import("../app/api/monitor/route");
     const db = getDatabase();
-    assert.equal(db.prepare("PRAGMA user_version").get()?.user_version, 10);
+    assert.equal(db.prepare("PRAGMA user_version").get()?.user_version, 11);
     const backups = await readdir(path.join(directory, "migration-backups"));
     assert.equal(backups.length, 1);
     const recovery = new DatabaseSync(path.join(directory, "migration-backups", backups[0]), { readOnly: true });

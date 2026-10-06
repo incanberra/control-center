@@ -40,6 +40,7 @@ import {
   writeCollectorSnapshot,
 } from "@/lib/collector-cache";
 
+import { trackCollection } from "@/lib/server/collection-tracking";
 export const runtime = "nodejs";
 
 const MENTION_WINDOW_DAYS = 7;
@@ -492,7 +493,7 @@ export async function GET(request: Request) {
       });
     }
   }
-  const response = await collectMentions(settings);
+  const response = await trackCollection("mentions", () => collectMentions(settings));
   if (response.ok) {
     const payload = await response.clone().json() as LiveFeedResponse;
     const saved = writeCollectorSnapshot(

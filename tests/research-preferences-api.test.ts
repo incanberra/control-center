@@ -72,7 +72,7 @@ test("schema 9 migration, no-charge preview, profile controls, cached Monitor re
     const { GET: monitor } = await import("../app/api/live/industry/route");
     const request = (body: unknown, method = "POST") => new Request("http://127.0.0.1:3000/api/research-preferences", { method, body: JSON.stringify(body) });
     const db = getDatabase();
-    assert.equal(db.prepare("PRAGMA user_version").get()?.user_version, 10);
+    assert.equal(db.prepare("PRAGMA user_version").get()?.user_version, 11);
     const backups = await readdir(path.join(directory, "migration-backups"));
     assert.equal(backups.length, 1);
     const recovery = new DatabaseSync(path.join(directory, "migration-backups", backups[0]), { readOnly: true });

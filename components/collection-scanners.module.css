@@ -1,0 +1,24 @@
+.section { padding: 24px; margin: 18px 0; }
+.section h2, .summary h2 { margin: 0 0 10px; font-size: 20px; }
+.section h3 { font-size: 17px; }
+.section p, .summary p, .section li { font-size: 13px; line-height: 1.65; color: var(--muted); }
+.heading, .summary { display: flex; justify-content: space-between; align-items: center; gap: 18px; }
+.summary { padding: 20px 24px; margin: 18px 0; }
+.summary p { margin: 7px 0; }
+.toggle { display: flex; align-items: center; gap: 10px; font-size: 13px; margin: 16px 0; }
+.tableScroll { overflow-x: auto; }
+.tableScroll table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tableScroll th, .tableScroll td { padding: 12px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+.tableScroll td small { display: block; margin-top: 7px; color: var(--muted); }
+.card { border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin: 16px 0; background: var(--surface-soft); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+.section summary { cursor: pointer; font-size: 13px; margin: 12px 0; }
+.folder, .upload { display: grid; gap: 9px; font-size: 13px; margin: 16px 0; }
+.folder input { width: 100%; padding: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 6px; }
+.notice { color: var(--positive); border: 1px solid var(--positive-border); padding: 14px 18px; border-radius: 8px; }
+.problem { color: var(--coral-dark) !important; }
+.link { padding: 0; border: 0; background: none; color: var(--teal); cursor: pointer; text-decoration: underline; font: inherit; }
+.brief { overflow-wrap: anywhere; }
+.brief p, .brief td { white-space: pre-line; }
+.brief a { color: var(--teal); }
+@media(max-width:720px) { .summary, .heading { align-items: flex-start; flex-direction: column; } .section { padding: 16px; } }

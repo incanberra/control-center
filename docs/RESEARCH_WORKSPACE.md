@@ -36,8 +36,10 @@ Setup documentation and runtime version files now agree on Node 24.13+. The lock
 
 ## Next increments
 
+Collection status and scanner integration are now implemented in schema 11. The Collection and scanners screen shows durable collection attempts/full successes, failures, backlog, costs and the next local scheduler check. It provides persisted pause and optional saved-report import controls, a safe dated report viewer, manual version-1 import/export, producer provenance and idempotent imports into Monitor. Original summaries and reading/feedback choices are retained. Complete morning editions are protected from ad-hoc or partial replacement. See `SCANNER_INTERCHANGE.md` for the contract, adapter boundaries and recovery behavior. No unattended service is installed, and automatic report imports start off.
+
 1. Collect real feedback and use Research preferences to compare a compact draft before enabling it. Review selected and missed developments after several collection cycles before expanding the rules. Semantic event clustering or interpretation of reasons would be a separate, explicitly scoped change.
-2. Integrate the existing morning geoeconomics collector and Think Tank Scanner through versioned local JSON export/import. Preserve producer/run identity, source evidence, partial-run status and user review state; avoid duplicate collection or repeat AI summarisation.
+2. Evaluate the implemented scanner imports with real morning runs, confirm source coverage and repeated-import behavior, and enable optional saved-report imports when useful. Decide whether unattended collection is actually needed before adding an OS service or changing the scanner schedules.
 3. Catalogue a small selection of real reusable work, with original-file links, descriptions, dates, reuse status and connections between charts, datasets, notebooks and reports. Add search and previews before automated ingestion.
 4. Add Topics with a research question, dated changes, linked evidence and linked assets. Shape Today around important updates and research actions.
 

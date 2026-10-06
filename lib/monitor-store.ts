@@ -3,6 +3,8 @@ import { listContentItems } from "./archive-store";
 import { isFreshTimestamp } from "./freshness";
 import type { LiveFeedResponse, LiveStory, StoryReview } from "./types";
 import { currentFeedbackByStory, initializeFeedbackStore } from "./feedback-store";
+import { currentScannerIds, scannerProvenance } from "./scanner-store";
+import { sortIndustryItems } from "./industry";
 
 export function initializeMonitorStore(database: DatabaseSync) {
   database.exec(`
@@ -76,11 +78,13 @@ export function withMonitorState(database: DatabaseSync, feed: LiveFeedResponse,
     reviewedAt: row.reviewed_at, savedAt: row.saved_at,
   }]));
   const feedback = currentFeedbackByStory(database);
+  const provenance = scannerProvenance(database);
   const attach = (item: LiveStory): LiveStory => ({
     ...item, review: byId.get(item.id) || { reviewedAt: null, savedAt: null }, feedback: feedback.get(item.id) || null,
+    ...(provenance.has(item.id) ? { scannerSources: provenance.get(item.id) } : {}),
   });
   const library = listContentItems<LiveStory>(database, "industry");
-  const currentIds = new Set(feed.items.map((item) => item.id));
+  const currentIds = new Set([...feed.items.map((item) => item.id), ...currentScannerIds(database)]);
   const hours = feed.freshnessHours || 24;
   const items: LiveStory[] = [];
   const historyItems: LiveStory[] = [];
@@ -96,6 +100,9 @@ export function withMonitorState(database: DatabaseSync, feed: LiveFeedResponse,
     restoreEligible: isFreshTimestamp(item.publishedAt, hours, now) &&
       (currentIds.has(item.id) || Boolean(feed.archivedItems?.find((old) => old.id === item.id)?.workflow?.restoreEligible)),
   } }));
+  const selected = sortIndustryItems(items, "important");
+  const readingLimit = feed.surfacedLimit || 30;
+  const overflow = selected.slice(readingLimit).map((item) => ({ ...item, workflow: { archiveReason: "not-current" as const, restoreEligible: false } }));
   return { ...feed, configured: feed.configured || items.length + historyItems.length + archivedItems.length > 0,
-    items, historyItems, historyCount: historyItems.length, archivedItems, archiveCount: archivedItems.length };
+    items: selected.slice(0, readingLimit), historyItems: [...overflow, ...historyItems], historyCount: historyItems.length + overflow.length, archivedItems, archiveCount: archivedItems.length };
 }

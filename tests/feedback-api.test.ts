@@ -47,7 +47,7 @@ test("schema 8 recovery, feedback APIs and restored history preserve real workfl
     const { GET, POST, PATCH } = await import("../app/api/monitor/feedback/route");
     const request = (body: unknown, method = "POST") => new Request("http://127.0.0.1:3000/api/monitor/feedback", { method, body: JSON.stringify(body) });
     const db = getDatabase();
-    assert.equal(db.prepare("PRAGMA user_version").get()?.user_version, 10);
+    assert.equal(db.prepare("PRAGMA user_version").get()?.user_version, 11);
     const backups = await readdir(path.join(directory, "migration-backups"));
     assert.equal(backups.length, 1);
     const recovery = new DatabaseSync(path.join(directory, "migration-backups", backups[0]), { readOnly: true });

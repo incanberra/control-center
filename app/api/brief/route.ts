@@ -14,6 +14,7 @@ import { readCollectorSnapshot } from "@/lib/collector-cache";
 import { industryCacheScope, mentionsCacheScope } from "@/lib/collector-scopes";
 import { buildDailyBriefSnapshot } from "@/lib/daily-brief-snapshot";
 import { newsletterCollectionScope } from "@/lib/server/newsletter-collector";
+import { withMonitorState } from "@/lib/monitor-store";
 
 export const runtime = "nodejs";
 
@@ -81,7 +82,7 @@ async function responsePayload(): Promise<DailyBriefResponse> {
     };
   });
   const snapshot = buildDailyBriefSnapshot(settings.dailyBrief.sections, {
-    industry: readCollectorSnapshot<LiveFeedResponse>(database, "industry", industryCacheScope(settings))?.payload,
+    industry: withMonitorState(database, readCollectorSnapshot<LiveFeedResponse>(database, "industry", industryCacheScope(settings))?.payload || { configured: false, checkedAt: "", items: [], errors: [], freshnessHours: (settings.industry.lookbackDays || 1) * 24 }),
     mentions: readCollectorSnapshot<LiveFeedResponse>(database, "mentions", mentionsCacheScope(settings))?.payload,
     newsletters: readCollectorSnapshot<NewsletterFeedResponse>(database, "newsletters", newsletterCollectionScope(settings))?.payload,
   });

@@ -158,6 +158,7 @@ export type LiveStory = {
   workflow?: ContentWorkflow;
   review?: StoryReview;
   feedback?: StoryFeedback | null;
+  scannerSources?: import("./scanner-contract").ScannerProvenance[];
 };
 
 export type IndustrySourceStatus = {

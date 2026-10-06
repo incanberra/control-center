@@ -81,6 +81,7 @@ import { AI_PROVIDER_LABELS, DEFAULT_LOCAL_AI_URLS, isAiReady } from "@/lib/ai-p
 import { sortFeedStories, selectNewsletterTopics, newsletterSourceOptions } from "@/lib/feed-priority";
 import { MonitorView } from "@/components/monitor-view";
 import { ResearchPreferences } from "@/components/research-preferences";
+import { CollectionScanners, CollectionSummary } from "@/components/collection-scanners";
 import { completeTaskItems } from "@/lib/tasks";
 import {
   applyArchiveToPayload,
@@ -96,6 +97,7 @@ type Tab =
   | "newsletters"
   | "tasks"
   | "preferences"
+  | "collection"
   | "settings";
 type SettingsSection =
   | "general"
@@ -713,6 +715,7 @@ function TodayView({
           <ArrowRight size={18} />
         </button>
       </div>
+      <CollectionSummary open={() => goTo("collection")} />
       <DailyBriefPanel
         settings={settings}
         openSettings={openSettings}
@@ -3147,7 +3150,7 @@ export function ControlCenter() {
       ) as Tab | null;
       if (
         requested &&
-        [...nav.map((item) => item.id), "settings", "preferences"].includes(requested)
+        [...nav.map((item) => item.id), "settings", "preferences", "collection"].includes(requested)
       )
         setActiveTab(requested);
     });
@@ -3349,6 +3352,8 @@ export function ControlCenter() {
     () =>
       activeTab === "settings"
         ? "Settings"
+        : activeTab === "collection" ? "Collection and scanners"
+        : activeTab === "preferences" ? "Research preferences"
         : nav.find((item) => item.id === activeTab)?.label,
     [activeTab],
   );
@@ -3430,9 +3435,9 @@ export function ControlCenter() {
           })}
         </nav>
         <div className="top-actions">
-          <button className="status-button" onClick={() => openSettings()}>
+          <button className="status-button" onClick={() => goTo("collection")}>
             <i className={configuredCount === 4 ? "ready" : ""} />
-            <span>{configuredCount}/4 live</span>
+            <span>{configuredCount}/4 configured</span>
           </button>
           <button
             className="icon-button theme-toggle"
@@ -3478,9 +3483,11 @@ export function ControlCenter() {
             }
             openSettings={() => openSettings("industry")}
             openPreferences={() => goTo("preferences")}
+            openCollection={() => goTo("collection")}
           />
         )}{" "}
         {activeTab === "preferences" && <ResearchPreferences backToMonitor={() => goTo("industry")} />}
+        {activeTab === "collection" && <CollectionScanners back={() => goTo("today")} />}
         {activeTab === "mentions" && (
           <MentionsView
             saveStory={(story) =>

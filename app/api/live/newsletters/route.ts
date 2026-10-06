@@ -13,6 +13,7 @@ import {
 } from "@/lib/server/newsletter-collector";
 import { readSettings } from "@/lib/server/settings";
 
+import { trackCollection } from "@/lib/server/collection-tracking";
 export const runtime = "nodejs";
 
 function json(
@@ -65,7 +66,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const payload = await collectNewsletterIntelligence(settings);
+    const tracked = await trackCollection("newsletters", async () => Response.json(await collectNewsletterIntelligence(settings)));
+    const payload = await tracked.json() as NewsletterFeedResponse;
     const saved = writeCollectorSnapshot(
       database,
       "newsletters",

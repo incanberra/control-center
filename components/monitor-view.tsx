@@ -7,6 +7,7 @@ import { monitorLists, type MonitorView as MonitorTab } from "@/lib/monitor";
 import { sortIndustryItems, type IndustrySortOrder } from "@/lib/industry";
 import styles from "./monitor-view.module.css";
 import { MonitorFeedbackHistory, MonitorStoryFeedback, type FeedbackMutationResponse } from "./monitor-feedback";
+import { scannerProducers } from "@/lib/scanner-contract";
 
 const labels: Record<MonitorTab, string> = {
   latest: "Latest", unreviewed: "Unreviewed", saved: "Saved", history: "History", archive: "Archived",
@@ -21,10 +22,11 @@ function dateLabel(value: string, time = false) {
   }).format(date);
 }
 
-export function MonitorView({ saveStory, openSettings, openPreferences }: {
+export function MonitorView({ saveStory, openSettings, openPreferences, openCollection }: {
   saveStory: (story: LiveStory) => void;
   openSettings: () => void;
   openPreferences: () => void;
+  openCollection: () => void;
 }) {
   const [data, setData] = useState<LiveFeedResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,6 +125,7 @@ export function MonitorView({ saveStory, openSettings, openPreferences }: {
         <span>{data.errors.length ? "Collection incomplete" : stale ? "Saved results · check for updates" : "Saved collection"}</span>
         <button onClick={openSettings}><Settings2 size={14} /> Sources and topics</button>
         <button onClick={openPreferences}><Settings2 size={14} /> Research preferences</button>
+        <button onClick={openCollection}><Globe2 size={14} /> Collection and scanners</button>
       </div>
       {data.preferenceStatus && <p className={styles.preferenceNote}>
         Research preferences {data.preferenceStatus.enabled ? "enabled" : "off"}{data.preferenceStatus.pending
@@ -188,6 +191,10 @@ export function MonitorView({ saveStory, openSettings, openPreferences }: {
             </div>
             <h2>{item.title}</h2><p>{item.summary || "Open the source to read the full update."}</p>
             {item.importanceReason && <p className="importance-reason">{item.importanceReason}</p>}
+            {!!item.scannerSources?.length && <details className={styles.health}><summary>Scanner provenance · {new Set(item.scannerSources.map((entry) => entry.producer)).size} producer(s)</summary>
+              {item.scannerSources.map((entry) => <div key={`${entry.producer}:${entry.runId}:${entry.itemId}`}><p>{scannerProducers[entry.producer]} · {dateLabel(entry.generatedAt, true)} · {entry.edition} · {entry.status}</p>
+                <ul>{entry.sources.map((source) => <li key={source.url}><a href={source.url} target="_blank" rel="noreferrer">{source.name} <ExternalLink size={12} /></a></li>)}</ul></div>)}
+            </details>}
             <div className={`story-footer ${styles.footer}`}><div className={styles.actions}>
               <button disabled={disabled} aria-pressed={Boolean(item.review?.reviewedAt)}
                 onClick={() => void update("/api/monitor", { ids: [item.id], reviewed: !item.review?.reviewedAt })}>
